@@ -1,15 +1,57 @@
-# see https://symfony.com/doc/current/reference/configuration/framework.html
+# config/packages/framework.yaml
 framework:
-    secret: '%env(APP_SECRET)%'
-
-    # Note that the session will be started ONLY if you read or write from it.
-    session: true
-
-    #esi: true
-    #fragments: true
-
-when@test:
-    framework:
-        test: true
-        session:
-            storage_factory_id: session.storage.factory.mock_file
+    secret: 
+        '%env(APP_SECRET)%'
+    
+    # Configuration des sessions
+    session:
+        handler_id: null
+        cookie_secure: auto
+        cookie_samesite: lax
+        storage_factory_id: session.storage.factory.native
+        
+        # Durée de vie des sessions
+        cookie_lifetime: 
+            '%env(int:SESSION_LIFETIME)%'
+        gc_maxlifetime: 
+            '%env(int:SESSION_LIFETIME)%'
+        save_path: 
+            '%kernel.project_dir%/var/sessions/%kernel.environment%'
+        
+        # Nom du cookie de session
+        name: JOBVIZ_SESSID
+        
+        # Configuration de sécurité
+        cookie_httponly: true
+        # use_strict_mode: true # Cette ligne a été supprimée car elle n'est pas compatible avec toutes les versions de Symfony
+        
+    # Configuration CSRF
+    csrf_protection:
+        enabled: true
+        
+    # Configuration des formulaires
+    form: true
+    
+    # Configuration de validation
+    validation:
+        enabled: true
+        #enable_annotations: true # Cette ligne a été supprimée
+        
+    # Configuration de la sérialisation
+    serializer:
+        enabled: true
+        
+    # Configuration des assets
+    assets:
+        version: 'v1.0'
+        
+    # Configuration du cache
+    cache:
+        app: cache.adapter.filesystem
+        system: cache.adapter.system
+        
+    # Configuration du profiler (développement )
+    profiler:
+        only_exceptions: false
+        enabled: 
+            '%kernel.debug%'

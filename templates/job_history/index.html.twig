@@ -1,0 +1,223 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Job History - Dashboard{% endblock %}
+
+{% block stylesheets %}
+<style>
+    .status-badge {
+        padding: .35em .65em;
+        border-radius: .25rem;
+        font-weight: 700;
+        color: #fff;
+    }
+
+    /* Specific status colors */
+    .status-badge.status-error {
+        background-color: #dc3545; /* Red for error */
+    }
+    .status-badge.status-ok {
+        background-color: #28a745; /* Green for OK */
+    }
+    .status-badge.status-warning {
+        background-color: #ffc107; /* Yellow for warning */
+        color: #212529; /* Dark text for better contrast */
+    }
+    .status-badge.status-info {
+        background-color: #17a2b8; /* Blue for info */
+    }
+    .status-badge.status-pending {
+        background-color: #6c757d; /* Gray for pending */
+    }
+    .status-badge.status-running {
+        background-color: #007bff; /* Blue for running */
+    }
+    .status-badge.status-cancelled {
+        background-color: #6c757d; /* Gray for cancelled */
+    }
+    .status-badge.status-skipped {
+        background-color: #17a2b8; /* Light blue for skipped */
+    }
+    .status-badge.status-aborted {
+        background-color: #dc3545; /* Red for aborted */
+    }
+    .status-badge.status-unknown {
+        background-color: #343a40; /* Dark gray for unknown */
+    }
+
+    /* Table row colors (optional, based on statusInfo.class) */
+    .history-row.status-error {
+        background-color: rgba(220, 53, 69, 0.1);
+    }
+    .history-row.status-ok {
+        background-color: rgba(40, 167, 69, 0.1);
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2 mb-0">
+        <i class="fas fa-history me-2"></i>Job History
+    </h1>
+    <button class="btn btn-primary" onclick="window.location.reload()">
+        <i class="fas fa-sync-alt me-2"></i>Refresh
+    </button>
+</div>
+
+<!-- Search and Filter -->
+<div class="search-container mb-4">
+    <form method="GET" class="row g-3">
+        {# --- First row of filters: Search and Status --- #}
+        <div class="col-md-5">
+            <label for="search" class="form-label">Search by Job Name</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                <input type="text" class="form-control" id="search" name="search" 
+                       value="{{ search }}" placeholder="Enter job name...">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <label for="status" class="form-label">Filter by Status</label>
+            <select class="form-select" id="status" name="status">
+                <option value="">All Statuses</option>
+                {% for code, name in statusOptions %}
+                    <option value="{{ code }}" {{ statusFilter == code ? 'selected' : '' }}>
+                        {{ name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary w-100">
+                <i class="fas fa-filter me-2"></i>Filter
+            </button>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <a href="{{ path('app_job_history') }}" class="btn btn-secondary w-100">
+                <i class="fas fa-times me-2"></i>Clear
+            </a>
+        </div>
+
+        {# --- Second row of filters: Dates --- #}
+        <div class="col-md-4">
+            <label for="currentDate" class="form-label">Filter by Current Date</label>
+            <input type="date" class="form-control" id="currentDate" name="currentDate" value="{{ currentDateFilter }}">
+        </div>
+        <div class="col-md-4">
+            <label for="startDate" class="form-label">Filter by Start Date</label>
+            <input type="date" class="form-control" id="startDate" name="startDate" value="{{ startDateFilter }}">
+        </div>
+        <div class="col-md-4">
+            <label for="endDate" class="form-label">Filter by End Date</label>
+            <input type="date" class="form-control" id="endDate" name="endDate" value="{{ endDateFilter }}">
+        </div>
+    </form>
+</div>
+
+<!-- History Table -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="fas fa-table me-2"></i>Job History ({{ history|length }} records)
+        </h5>
+    </div>
+    <div class="card-body p-0">
+        {% if history|length > 0 %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Job Name</th>
+                            <th>Status</th>
+                            <th>Run Number</th>
+                            <th>Current Date</th>
+                            <th>Start Date</th>
+                            <th>End Date</th>
+                            <th>Duration</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in history %}
+                            {% set statusInfo = record.statusInfo %}
+                            <tr class="history-row {{ statusInfo.class }}">
+                                <td><strong>{{ record.jobName }}</strong></td>
+                                <td>
+                                    <span class="status-badge {{ statusInfo.class }}">
+                                        {{ record.status }}
+                                    </span>
+                                    <small class="d-block text-muted mt-1">{{ statusInfo.name }}</small>
+                                </td>
+                                <td>{{ record.runNbr }}</td>
+                                <td>
+                                    <span class="fw-bold">{{ record.currentDate|date('Y-m-d') }}</span>
+                                    <small class="d-block text-muted">{{ record.currentDate|date('H:i:s') }}</small>
+                                </td>
+                                <td>
+                                    <span class="fw-bold">{{ record.startDate|date('Y-m-d') }}</span>
+                                    <small class="d-block text-muted">{{ record.startDate|date('H:i:s') }}</small>
+                                </td>
+                                <td>
+                                    <span class="fw-bold">{{ record.endDate|date('Y-m-d') }}</span>
+                                    <small class="d-block text-muted">{{ record.endDate|date('H:i:s') }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">{{ record.duration }}</span>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                {% if hasFilters %}
+                    <h5 class="text-muted">No history records found</h5>
+                    <p class="text-muted">Try adjusting your search criteria or filters.</p>
+                {% else %}
+                    <h5 class="text-muted">Please apply filters to see the job history.</h5>
+                    <p class="text-muted">Use the search and filter options above to get started.</p>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- History Cards for Mobile (d-md-none) -->
+<div class="d-md-none mt-4">
+    {% for record in history %}
+        {% set statusInfo = record.statusInfo %}
+        <div class="card job-card {{ statusInfo.class }} mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h6 class="card-title mb-0">{{ record.jobName }}</h6>
+                    <span class="status-badge {{ statusInfo.class }}">{{ record.status }}</span>
+                </div>
+                <div class="row g-2 text-sm">
+                    <div class="col-6">
+                        <strong>Run:</strong> {{ record.runNbr }}
+                    </div>
+                    <div class="col-6">
+                        <strong>Duration:</strong> <span class="badge bg-info">{{ record.duration }}</span>
+                    </div>
+                    <div class="col-12">
+                        <strong>Current:</strong> {{ record.currentDate|date('Y-m-d H:i:s') }}
+                    </div>
+                    <div class="col-12">
+                        <strong>Start:</strong> {{ record.startDate|date('Y-m-d H:i:s') }}
+                    </div>
+                    <div class="col-12">
+                        <strong>End:</strong> {{ record.endDate|date('Y-m-d H:i:s') }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block javascripts %}
+{# No client-side JavaScript is needed for filtering. #}
+{% endblock %}
+
+

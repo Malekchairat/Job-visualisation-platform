@@ -1,0 +1,158 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Job Dependencies - Dashboard{% endblock %}
+
+{% block body %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2 mb-0"><i class="fas fa-sitemap me-2"></i>Job Dependencies</h1>
+</div>
+
+<!-- Search -->
+<div class="search-container">
+    <form method="GET" class="row g-3">
+        <div class="col-md-5">
+            <label for="jobNameSearch" class="form-label">Search by Job Name</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                <input type="text" class="form-control" id="jobNameSearch" name="jobNameSearch" value="{{ jobNameSearch }}" placeholder="Enter job name...">
+            </div>
+        </div>
+        <div class="col-md-5">
+            <label for="dependOnSearch" class="form-label">Search by "Depends On"</label>
+            <div class="input-group">
+                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                <input type="text" class="form-control" id="dependOnSearch" name="dependOnSearch" value="{{ dependOnSearch }}" placeholder="Enter dependency...">
+            </div>
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+            <button type="submit" class="btn btn-primary w-100">
+                <i class="fas fa-filter me-2"></i>Search
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Dependencies Table -->
+<div class="card mt-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="fas fa-table me-2"></i>Job Dependencies ({{ dependencies|length }} relationships)</h5>
+        <a href="{{ path('app_job_status_visualization') }}" class="btn btn-sm btn-outline-primary">
+            <i class="fas fa-project-diagram me-2"></i>View Visualization
+        </a>
+    </div>
+    <div class="card-body p-0">
+        {% if dependencies|length > 0 %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>Job Name</th>
+                            <th>Depends On</th>
+                            <th>Relationship</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for dependency in dependencies %}
+                            <tr class="dependency-row">
+                                <td>
+                                    <strong>{{ dependency.jobName }}</strong>
+                                </td>
+                                <td>
+                                    <i class="fas fa-arrow-right text-muted mx-2"></i>
+                                    <strong>{{ dependency.dependOn }}</strong>
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary"><i class="fas fa-link me-1"></i>Depends On</span>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No dependencies found</h5>
+                <p class="text-muted">Try adjusting your search criteria.</p>
+                <a href="{{ path('app_job_dependencies') }}" class="btn btn-primary">
+                    <i class="fas fa-sync me-2"></i>Clear Search
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Dependencies Cards for Mobile -->
+<div class="d-md-none mt-4">
+    {% for dependency in dependencies %}
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="text-center">
+                    <h6 class="card-title text-primary">{{ dependency.jobName }}</h6>
+                    <i class="fas fa-arrow-down text-muted my-2"></i>
+                    <p class="text-muted mb-1">depends on</p>
+                    <h6 class="text-success">{{ dependency.dependOn }}</h6>
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+
+<!-- Summary Statistics -->
+{% if dependencies|length > 0 %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Dependency Statistics</h6>
+            </div>
+            <div class="card-body">
+                {# Manually create unique lists #}
+                {% set uniqueJobsWithDeps = {} %}
+                {% set uniqueDependencyTargets = {} %}
+                {% for dependency in dependencies %}
+                    {% set uniqueJobsWithDeps = uniqueJobsWithDeps|merge({ (dependency.jobName): 1 }) %}
+                    {% set uniqueDependencyTargets = uniqueDependencyTargets|merge({ (dependency.dependOn): 1 }) %}
+                {% endfor %}
+                
+                {% set uniqueJobsCount = uniqueJobsWithDeps|length %}
+                {% set avgDependencies = uniqueJobsCount > 0 ? (dependencies|length / uniqueJobsCount)|round(1) : 0 %}
+
+                <div class="row g-3">
+                    <div class="col-md-3 col-sm-6">
+                        <div class="text-center">
+                            <div class="stats-number text-primary">{{ dependencies|length }}</div>
+                            <div class="stats-label">Total Dependencies</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="text-center">
+                            <div class="stats-number text-success">{{ uniqueJobsCount }}</div>
+                            <div class="stats-label">Jobs with Dependencies</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="text-center">
+                            <div class="stats-number text-info">{{ uniqueDependencyTargets|length }}</div>
+                            <div class="stats-label">Dependency Targets</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-sm-6">
+                        <div class="text-center">
+                            <div class="stats-number text-warning">{{ avgDependencies }}</div>
+                            <div class="stats-label">Avg Dependencies per Job</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block javascripts %}
+{# Client-side filtering script removed as all filtering is now handled by the server. #}
+{% endblock %}

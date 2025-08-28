@@ -1,0 +1,184 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Job Status - Dashboard{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <style>
+        .sort-link { text-decoration: none; color: inherit; }
+        .sort-link.active { color: #0d6efd; font-weight: bold; }
+        .filter-card { background-color: #f8f9fa; }
+        
+        /* Status badge colors */
+        .badge-running { background-color: #ffc107 !important; color: #000; } /* Yellow for in progress */
+        .badge-completed { background-color: #198754 !important; } /* Green for completed */
+        .badge-error { background-color: #dc3545 !important; } /* Red for error */
+    </style>
+{% endblock %}
+
+{% block body %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="h2 mb-0"><i class="fas fa-tasks me-2"></i>Job Status Dashboard</h1>
+        <a href="{{ path('app_job_status_export', filters ) }}" class="btn btn-success">
+            <i class="fas fa-file-excel me-2"></i>Export to Excel
+        </a>
+    </div>
+
+    <!-- Search, Filter, and Sort Controls -->
+    <div class="card mb-4 filter-card">
+        <div class="card-body">
+            <form method="GET" id="filter-form" class="row g-3 align-items-end">
+                {# Search and Status #}
+                <div class="col-md-3">
+                    <label for="search" class="form-label">Search Jobs</label>
+                    <input type="text" class="form-control" name="search" value="{{ filters.search ?? '' }}" placeholder="Enter job name...">
+                </div>
+                <div class="col-md-2">
+                    <label for="status" class="form-label">Filter by Status</label>
+                    <select class="form-select" name="status">
+                        <option value="">All</option>
+                        {% for code, name in statusOptions %}
+                            <option value="{{ code }}" {{ (filters.status ?? '') == code ? 'selected' : '' }}>{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {# Date Range #}
+                <div class="col-md-2">
+                    <label for="startDate" class="form-label">Start Date</label>
+                    <input type="text" class="form-control date-picker" id="startDate" name="startDate" value="{{ filters.startDate ?? '' }}" placeholder="Select date...">
+                </div>
+                <div class="col-md-2">
+                    <label for="endDate" class="form-label">End Date</label>
+                    <input type="text" class="form-control date-picker" id="endDate" name="endDate" value="{{ filters.endDate ?? '' }}" placeholder="Select date...">
+                </div>
+                {# Current Date Filter #}
+                <div class="col-md-2">
+                    <label for="currentDate" class="form-label">Current Date</label>
+                    <input type="text" class="form-control date-picker" id="currentDate" name="currentDate" value="{{ filters.currentDate ?? '' }}" placeholder="Select date...">
+                </div>
+                
+                {# Sort Controls #}
+                <div class="col-md-3">
+                    <label class="form-label">Sort By</label>
+                    <div class="input-group">
+                        <select name="sort_by" class="form-select">
+                            <option value="startDate" {{ (filters.sort_by ?? 'startDate') == 'startDate' ? 'selected' : '' }}>Start Date</option>
+                            <option value="currentDate" {{ (filters.sort_by ?? '') == 'currentDate' ? 'selected' : '' }}>Current Date</option>
+                            <option value="jobName" {{ (filters.sort_by ?? '') == 'jobName' ? 'selected' : '' }}>Job Name</option>
+                            <option value="runNbr" {{ (filters.sort_by ?? '') == 'runNbr' ? 'selected' : '' }}>Run Number</option>
+                        </select>
+                        <select name="sort_order" class="form-select">
+                            <option value="ASC" {{ (filters.sort_order ?? '') == 'ASC' ? 'selected' : '' }}>Ascending</option>
+                            <option value="DESC" {{ (filters.sort_order ?? 'DESC') == 'DESC' ? 'selected' : '' }}>Descending</option>
+                        </select>
+                    </div>
+                </div>
+                {# Action Buttons #}
+                <div class="col-md-12 d-flex justify-content-end gap-2 mt-3">
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-filter me-2"></i>Apply Filters</button>
+                    <a href="{{ path('app_job_status') }}" class="btn btn-secondary"><i class="fas fa-times me-2"></i>Clear Filters</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Jobs Table -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="fas fa-table me-2"></i>
+                Showing {{ jobs|length }} of {{ totalJobs }} Jobs
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            {% if jobs|length > 0 %}
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Job Name</th>
+                                <th>Status</th>
+                                <th>Run Number</th>
+                                <th>Current Date</th>
+                                <th>Start Date</th>
+                                <th>End Date</th>
+                                <th>Duration</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for job in jobs %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ job.jobName }}</strong>
+                                        {% if job.status in ['EC', 'IP'] %}
+                                            <i class="fas fa-spinner fa-spin ms-2 text-warning" title="Job is running"></i>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if job.status in ['EC', 'IP'] %}
+                                            <span class="badge rounded-pill badge-running">Running</span>
+                                        {% elseif job.status == 'OK' %}
+                                            <span class="badge rounded-pill badge-completed">Completed</span>
+                                        {% elseif job.status == 'KO' %}
+                                            <span class="badge rounded-pill badge-error">Error</span>
+                                        {% else %}
+                                            <span class="badge rounded-pill" style="background-color: #6c757d;">{{ job.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ job.runNbr }}</td>
+                                    <td>{{ job.currentDate ? job.currentDate|date('Y-m-d H:i:s') : '-' }}</td>
+                                    <td>{{ job.startDate ? job.startDate|date('Y-m-d H:i:s') : '-' }}</td>
+                                    <td>{{ job.endDate ? job.endDate|date('Y-m-d H:i:s') : '-' }}</td>
+                                    <td>{{ job.duration ?? '-' }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- PAGINATION -->
+                {% if totalPages > 1 %}
+                <div class="card-footer d-flex justify-content-center">
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination">
+                            <li class="page-item {{ page <= 1 ? 'disabled' : '' }}">
+                                <a class="page-link" href="{{ path('app_job_status', filters|merge({page: page - 1})) }}">Previous</a>
+                            </li>
+                            {% for i in 1..totalPages %}
+                                <li class="page-item {{ i == page ? 'active' : '' }}">
+                                    <a class="page-link" href="{{ path('app_job_status', filters|merge({page: i})) }}">{{ i }}</a>
+                                </li>
+                            {% endfor %}
+                            <li class="page-item {{ page >= totalPages ? 'disabled' : '' }}">
+                                <a class="page-link" href="{{ path('app_job_status', filters|merge({page: page + 1})) }}">Next</a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+
+            {% else %}
+                <div class="text-center py-5">
+                    <h5 class="text-muted">No jobs found with the selected criteria.</h5>
+                    <a href="{{ path('app_job_status') }}" class="btn btn-primary mt-2">Clear Filters</a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Init all date pickers with a common class
+        flatpickr(".date-picker", { 
+            dateFormat: "Y-m-d" 
+        });
+    });
+    </script>
+{% endblock %}

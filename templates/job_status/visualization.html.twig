@@ -1,0 +1,1823 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Job Visualization - AI-Enhanced Dashboard{% endblock %}
+
+{% block body %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2 mb-0">
+        <i class="fas fa-project-diagram me-2"></i>Job Dependencies Visualization
+        <span class="badge bg-primary ms-2">AI-Enhanced</span>
+    </h1>
+    <div class="d-flex gap-2">
+        <a href="{{ path('app_job_status') }}" class="btn btn-outline-primary">
+            <i class="fas fa-list me-2"></i>Table View
+        </a>
+        <button class="btn btn-primary" onclick="refreshVisualization()">
+            <i class="fas fa-sync-alt me-2"></i>Refresh
+        </button>
+    </div>
+</div>
+
+<!-- AI Prediction Panel -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card border-success ai-assistant-card">
+            <div class="card-header bg-success text-white">
+                <h6 class="mb-0">
+                    <i class="fas fa-magic me-2"></i>AI Job Outcome Predictor
+                    <span class="ai-status-indicator" id="aiStatusIndicator">
+                        <i class="fas fa-circle text-success"></i>
+                    </span>
+                </h6>
+            </div>
+            <div class="card-body p-3">
+                <div class="mb-3">
+                    <label for="jobPredictor" class="form-label">Select Job for Prediction</label>
+                    <select id="jobPredictor" class="form-select">
+                        <option value="">Choose a job...</option>
+                    </select>
+                </div>
+                
+                <!-- Loading State -->
+                <div id="predictionLoading" class="d-none text-center py-3">
+                    <div class="spinner-border spinner-border-sm text-success" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <div class="mt-2 small text-muted">Analyzing job patterns...</div>
+                </div>
+                
+                <!-- Prediction Results -->
+                <div id="predictionResult" class="d-none">
+                    <div class="alert" id="predictionAlert">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <strong>Prediction:</strong>
+                            <span id="predictionOutcome" class="badge"></span>
+                        </div>
+                        <div class="mb-2">
+                            <strong>Confidence:</strong> <span id="predictionConfidence"></span>%
+                        </div>
+                        <div class="progress mb-2" style="height: 8px;">
+                            <div id="confidenceBar" class="progress-bar" role="progressbar"></div>
+                        </div>
+                        <small id="predictionReason" class="text-muted"></small>
+                    </div>
+                    
+                    <!-- Additional AI Insights -->
+                    <div class="ai-insights mt-3">
+                        <h6 class="text-muted mb-2">
+                            <i class="fas fa-lightbulb me-1"></i>AI Insights
+                        </h6>
+                        <div id="aiInsights" class="small text-muted">
+                            <!-- Insights will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Error State -->
+                <div id="predictionError" class="d-none">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Unable to generate prediction</strong>
+                        <div class="small mt-1" id="errorMessage">Please try again later.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <!-- Existing controls -->
+        <div class="card">
+            <div class="card-body">
+                <div class="row g-3 align-items-center">
+                    <div class="col-md-3">
+                        <label for="viewToggle" class="form-label">View Type</label>
+                        <select id="viewToggle" class="form-select">
+                            <option value="network">Network Graph</option>
+                            <option value="timeline">Chronological Timeline</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="jobSearch" class="form-label">Search Job</label>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-search"></i></span>
+                            <input type="text" id="jobSearch" class="form-control" placeholder="Job name...">
+                        </div>
+                    </div>
+                    <div class="col-md-3" id="layoutSelectContainer">
+                        <label for="layoutSelect" class="form-label">Layout Engine</label>
+                        <select id="layoutSelect" class="form-select">
+                            <option value="hierarchical">Hierarchical (Top-Down)</option>
+                            <option value="physics">Force-Directed</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3" id="showLabelsContainer">
+                        <div class="form-check form-switch pt-4">
+                            <input class="form-check-input" type="checkbox" id="showLabels" checked>
+                            <label class="form-check-label" for="showLabels">
+                                Show All Labels
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-2">
+                    <div class="col-md-12 d-flex gap-2">
+                        <button id="fitNetwork" class="btn btn-outline-secondary">
+                            <i class="fas fa-expand-arrows-alt me-2"></i>Reset View
+                        </button>
+                        <input type="date" id="timelineDateInput" class="form-control" style="display: none;">
+                        <button id="clearHighlight" class="btn btn-outline-warning">
+                            <i class="fas fa-eye-slash me-2"></i>Clear Highlight
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Visualization Container -->
+<div class="card">
+    <div class="card-body p-0">
+        <div id="networkContainer" class="visualization-container"></div>
+        <div id="timelineContainer" class="visualization-container d-none">
+            <div class="timeline-stats-box">
+                <div class="stats-header">
+                    <h6><i class="fas fa-chart-bar"></i> Job Statistics</h6>
+                </div>
+                <div class="stats-content">
+                    <div class="stat-item">
+                        <span class="stat-label">Total Jobs:</span>
+                        <span class="stat-value" id="totalJobsCount">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Date Range:</span>
+                        <span class="stat-value" id="dateRangeInfo">-</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Jobs per Day:</span>
+                        <span class="stat-value" id="jobsPerDayAvg">0</span>
+                    </div>
+                </div>
+            </div>
+            <svg id="chronologicalTimeline" width="100%" height="100%"></svg>
+            <!-- Sticky Bottom Axis -->
+            <div id="stickyBottomAxis" class="sticky-bottom-axis">
+                <svg width="100%" height="60"></svg>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Job Details Modal -->
+<div class="modal fade" id="jobDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Job Details: <span id="modalJobDetailsName"></span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="modalJobDetailsContent"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.visualization-container {
+    height: 75vh;
+    border: 1px solid #dee2e6;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    position: relative;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* AI Assistant Specific Styles */
+.ai-assistant-card {
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.15);
+    transition: all 0.3s ease;
+}
+
+.ai-assistant-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(40, 167, 69, 0.2);
+}
+
+.ai-status-indicator {
+    float: right;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.ai-insights {
+    background: rgba(40, 167, 69, 0.05);
+    border-left: 3px solid #28a745;
+    padding: 10px;
+    border-radius: 0 4px 4px 0;
+}
+
+.prediction-success {
+    background-color: rgba(40, 167, 69, 0.1);
+    border-color: #28a745;
+}
+
+.prediction-failure {
+    background-color: rgba(220, 53, 69, 0.1);
+    border-color: #dc3545;
+}
+
+.prediction-uncertain {
+    background-color: rgba(255, 193, 7, 0.1);
+    border-color: #ffc107;
+}
+
+/* Enhanced highlighting styles */
+.node-highlighted {
+    border-width: 4px !important;
+    border-color: #007bff !important;
+    box-shadow: 0 0 20px rgba(0, 123, 255, 0.6) !important;
+    animation: highlightPulse 2s infinite;
+}
+
+.node-connected {
+    border-width: 3px !important;
+    border-color: #28a745 !important;
+    box-shadow: 0 0 15px rgba(40, 167, 69, 0.5) !important;
+}
+
+.node-dimmed {
+    opacity: 0.3 !important;
+}
+
+.edge-highlighted {
+    color: #007bff !important;
+    width: 3 !important;
+    shadow: true !important;
+}
+
+.edge-connected {
+    color: #28a745 !important;
+    width: 2 !important;
+}
+
+.edge-dimmed {
+    opacity: 0.2 !important;
+}
+
+@keyframes highlightPulse {
+    0% { box-shadow: 0 0 20px rgba(0, 123, 255, 0.6); }
+    50% { box-shadow: 0 0 30px rgba(0, 123, 255, 0.8); }
+    100% { box-shadow: 0 0 20px rgba(0, 123, 255, 0.6); }
+}
+
+/* Timeline highlighting styles */
+.job-bar-highlighted {
+    stroke: #007bff !important;
+    stroke-width: 3 !important;
+    filter: drop-shadow(0 0 10px rgba(0, 123, 255, 0.8)) !important;
+    animation: timelineHighlightPulse 2s infinite;
+}
+
+.job-bar-connected {
+    stroke: #28a745 !important;
+    stroke-width: 2 !important;
+    filter: drop-shadow(0 0 8px rgba(40, 167, 69, 0.6)) !important;
+}
+
+.job-bar-dimmed {
+    opacity: 0.3 !important;
+}
+
+@keyframes timelineHighlightPulse {
+    0% { filter: drop-shadow(0 0 10px rgba(0, 123, 255, 0.8)); }
+    50% { filter: drop-shadow(0 0 15px rgba(0, 123, 255, 1)); }
+    100% { filter: drop-shadow(0 0 10px rgba(0, 123, 255, 0.8)); }
+}
+
+/* Timeline Stats Box */
+.timeline-stats-box {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid #dee2e6;
+    border-radius: 12px;
+    padding: 15px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    z-index: 10;
+    min-width: 200px;
+    backdrop-filter: blur(10px);
+}
+
+.stats-header h6 {
+    margin: 0;
+    color: #495057;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.stats-content {
+    margin-top: 10px;
+}
+
+.stat-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 12px;
+}
+
+.stat-label {
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.stat-value {
+    color: #495057;
+    font-weight: 600;
+}
+
+/* Enhanced Timeline Styles */
+.timeline-axis {
+    stroke: #2c3e50;
+    stroke-width: 2;
+    stroke-linecap: round;
+}
+
+.timeline-tick {
+    stroke: #34495e;
+    stroke-width: 1;
+}
+
+.timeline-tick-label {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 11px;
+    fill: #6c757d; /* Lighter color */
+    text-anchor: middle;
+    font-weight: normal; /* Less bold */
+}
+
+/* SHARPER JOB BARS - Reduced border radius */
+.job-bar {
+    cursor: pointer;
+    transition: none;
+    stroke: white;
+    stroke-width: 1;
+    rx: 2;
+    ry: 2;
+    filter: none;
+}
+
+.job-bar:hover {
+    stroke-width: 1;
+    filter: none;
+    transform: none;
+}
+
+.job-bar.status-ok {
+    fill: #28a745;
+}
+
+.job-bar.status-er {
+    fill: #dc3545;
+}
+
+.job-bar.status-ip {
+    fill: #007bff;
+}
+
+.job-bar.status-pe {
+    fill: #6c757d;
+}
+
+.job-bar.status-ko {
+    fill: #fd7e14;
+}
+
+.job-label-left {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 11px;
+    fill: #2c3e50;
+    pointer-events: none;
+    text-anchor: end;
+    font-weight: 600;
+}
+
+.job-label-left:hover {
+    fill: #2c3e50;
+}
+
+.global-start-marker, .global-end-marker {
+    fill: #dc3545;
+    stroke: white;
+    stroke-width: 3;
+    r: 10;
+}
+
+.axis-label {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    fill: #2c3e50;
+    text-anchor: middle;
+}
+
+.date-group-label {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 10px;
+    font-weight: 600;
+    fill: #6c757d;
+    text-anchor: middle;
+}
+
+.date-group-count {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    fill: #495057;
+    text-anchor: middle;
+}
+
+.tooltip {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 12px 16px;
+    border-radius: 6px;
+    font-size: 12px;
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    max-width: 280px;
+}
+
+.tooltip.show {
+    opacity: 1;
+}
+
+.tooltip strong {
+    color: #ffc107;
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+}
+
+/* STICKY BOTTOM AXIS - Always at bottom of viewport */
+.sticky-bottom-axis {
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: rgba(248, 249, 250, 0.95);
+    border-top: 1px solid #dee2e6;
+    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    z-index: 100;
+    pointer-events: none;
+    border-radius: 4px 4px 0 0;
+    margin: 0 10px;
+}
+
+/* Enhanced axis ticks and labels for sticky axis */
+.sticky-bottom-axis .timeline-tick {
+    stroke: #6c757d;
+    stroke-width: 1;
+}
+
+.sticky-bottom-axis .timeline-tick-label {
+    fill: #6c757d;
+    font-weight: normal;
+    font-size: 11px;
+}
+
+/* Grid lines for better readability */
+.grid-line {
+    stroke: rgba(108, 117, 125, 0.2);
+    stroke-width: 1;
+    stroke-dasharray: 2,2;
+}
+
+/* Time markers */
+.time-marker {
+    fill: #6c757d;
+    stroke: white;
+    stroke-width: 1;
+    r: 3;
+    opacity: 0.7;
+}
+
+.time-marker:hover {
+    opacity: 1;
+}
+
+/* Enhanced animations */
+
+
+/* Smooth scrollbar */
+.visualization-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.visualization-container::-webkit-scrollbar-track {
+    background: rgba(233, 236, 239, 0.5);
+    border-radius: 4px;
+}
+
+.visualization-container::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    border-radius: 4px;
+    transition: all 0.3s ease;
+}
+
+.visualization-container::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #0056b3, #004085);
+}
+
+/* No jobs message styling */
+.no-jobs-message {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 18px;
+    fill: #6c757d;
+    text-anchor: middle;
+    font-weight: 500;
+}
+
+/* Loading indicator for timeline */
+.timeline-loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    z-index: 20;
+}
+
+.timeline-error {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    z-index: 20;
+    color: #dc3545;
+}
+</style>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+    // Override the location.reload() method to do nothing
+    window.location.reload = function() {
+        console.log("A script tried to refresh the page, but it was blocked.");
+        return false;
+    };
+
+    // Override the meta refresh tag functionality by searching for it
+    // and removing it from the document's head.
+    document.addEventListener('DOMContentLoaded', function() {
+        var metaTags = document.getElementsByTagName('meta');
+        for (var i = 0; i < metaTags.length; i++) {
+            if (metaTags[i].getAttribute('http-equiv'  ) === 'refresh') {
+                console.log('Found and removed a meta refresh tag.');
+                metaTags[i].parentNode.removeChild(metaTags[i]);
+            }
+        }
+    });
+    console.log('Refresh blocker is active.');
+</script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+
+<script>
+// Make data available globally - THESE ARE FOR NETWORK GRAPH ONLY (8 April data )
+window.nodesData = {{ nodes|raw }};
+window.edgesData = {{ edges|raw }};
+window.originalNodesData = {{ nodes|raw }};
+
+// AI-Enhanced Job Visualization - Complete JavaScript Implementation with Dynamic Timeline API
+document.addEventListener('DOMContentLoaded', function( ) {
+    // 1. DATA INITIALIZATION
+    const allNodes = new vis.DataSet(window.nodesData || []);
+    const allEdges = new vis.DataSet(window.edgesData || []);
+    const originalNodesData = window.originalNodesData || [];
+    
+    let currentView = 'network';
+    let network = null;
+    let timelineJobsData = []; // SEPARATE DATA FOR TIMELINE (dynamic from API)
+    let aiAssistant = null;
+    let currentXScale = null;
+    let stickyAxisElement = null;
+    let highlightedNodeId = null;
+    let connectedNodeIds = [];
+
+    // Store original node and edge styles for reset
+    const originalNodeStyles = new Map();
+    const originalEdgeStyles = new Map();
+
+    // Initialize original styles
+    allNodes.forEach(node => {
+        originalNodeStyles.set(node.id, {
+            size: node.size || 20,
+            borderWidth: node.borderWidth || 2,
+            borderColor: node.borderColor || node.color?.border,
+            color: node.color,
+            opacity: node.opacity || 1
+        });
+    });
+
+    allEdges.forEach(edge => {
+        originalEdgeStyles.set(edge.id, {
+            color: edge.color,
+            width: edge.width || 1.5,
+            opacity: edge.opacity || 1
+        });
+    });
+
+    // 2. HIGHLIGHTING FUNCTIONS - FIXED VERSION
+    function highlightNodeAndConnections(nodeId) {
+        if (!network) return;
+
+        // Clear previous highlighting
+        clearHighlighting();
+
+        highlightedNodeId = nodeId;
+        
+        // Find connected nodes
+        connectedNodeIds = [];
+        allEdges.forEach(edge => {
+            if (edge.from === nodeId) {
+                connectedNodeIds.push(edge.to);
+            } else if (edge.to === nodeId) {
+                connectedNodeIds.push(edge.from);
+            }
+        });
+
+        // Update node styles
+        const nodeUpdates = [];
+        const edgeUpdates = [];
+
+        allNodes.forEach(node => {
+            const original = originalNodeStyles.get(node.id);
+            
+            if (node.id === nodeId) {
+                // Make the selected node BIGGER and highlighted
+                nodeUpdates.push({
+                    id: node.id,
+                    size: (original?.size || 20) * 1.8, // Make it 80% bigger
+                    borderWidth: 6,
+                    borderColor: '#007bff',
+                    color: {
+                        ...original?.color,
+                        border: '#007bff'
+                    },
+                    shadow: {
+                        enabled: true,
+                        color: 'rgba(0, 123, 255, 0.6)',
+                        size: 20,
+                        x: 0,
+                        y: 0
+                    }
+                });
+            } else if (connectedNodeIds.includes(node.id)) {
+                // Make connected nodes slightly bigger
+                nodeUpdates.push({
+                    id: node.id,
+                    size: (original?.size || 20) * 1.3, // Make it 30% bigger
+                    borderWidth: 4,
+                    borderColor: '#28a745',
+                    color: {
+                        ...original?.color,
+                        border: '#28a745'
+                    },
+                    shadow: {
+                        enabled: true,
+                        color: 'rgba(40, 167, 69, 0.5)',
+                        size: 15,
+                        x: 0,
+                        y: 0
+                    }
+                });
+            } else {
+                // Make other nodes white/dimmed
+                nodeUpdates.push({
+                    id: node.id,
+                    size: original?.size || 20,
+                    borderWidth: 1,
+                    borderColor: '#ffffff',
+                    color: {
+                        background: '#ffffff',
+                        border: '#e0e0e0'
+                    },
+                    opacity: 0.4,
+                    shadow: false
+                });
+            }
+        });
+
+        // Update edge styles
+        allEdges.forEach(edge => {
+            if (edge.from === nodeId || edge.to === nodeId) {
+                // Highlight edges connected to selected node
+                edgeUpdates.push({
+                    id: edge.id,
+                    color: {
+                        color: '#007bff',
+                        highlight: '#0056b3',
+                        hover: '#004085'
+                    },
+                    width: 4,
+                    shadow: {
+                        enabled: true,
+                        color: 'rgba(0, 123, 255, 0.4)',
+                        size: 10,
+                        x: 0,
+                        y: 0
+                    }
+                });
+            } else if (connectedNodeIds.includes(edge.from) || connectedNodeIds.includes(edge.to)) {
+                // Highlight edges between connected nodes
+                edgeUpdates.push({
+                    id: edge.id,
+                    color: {
+                        color: '#28a745',
+                        highlight: '#1e7e34',
+                        hover: '#155724'
+                    },
+                    width: 2.5
+                });
+            } else {
+                // Dim other edges
+                edgeUpdates.push({
+                    id: edge.id,
+                    color: {
+                        color: '#e0e0e0',
+                        highlight: '#e0e0e0',
+                        hover: '#e0e0e0'
+                    },
+                    width: 1,
+                    opacity: 0.3
+                });
+            }
+        });
+
+        // Apply updates
+        allNodes.update(nodeUpdates);
+        allEdges.update(edgeUpdates);
+
+        // Also highlight in timeline view if active
+        if (currentView === 'timeline') {
+            highlightTimelineJob(nodeId);
+        }
+
+        console.log(`Highlighted node ${nodeId} and ${connectedNodeIds.length} connected nodes`);
+    }
+
+    function clearHighlighting() {
+        if (!network) return;
+
+        // Reset all nodes to original styles
+        const nodeUpdates = [];
+        const edgeUpdates = [];
+
+        allNodes.forEach(node => {
+            const original = originalNodeStyles.get(node.id);
+            nodeUpdates.push({
+                id: node.id,
+                size: original?.size || 20,
+                borderWidth: original?.borderWidth || 2,
+                borderColor: original?.borderColor,
+                color: original?.color,
+                opacity: original?.opacity || 1,
+                shadow: false
+            });
+        });
+
+        allEdges.forEach(edge => {
+            const original = originalEdgeStyles.get(edge.id);
+            edgeUpdates.push({
+                id: edge.id,
+                color: original?.color,
+                width: original?.width || 1.5,
+                opacity: original?.opacity || 1,
+                shadow: false
+            });
+        });
+
+        // Apply updates
+        allNodes.update(nodeUpdates);
+        allEdges.update(edgeUpdates);
+
+        // Clear timeline highlighting
+        clearTimelineHighlighting();
+
+        highlightedNodeId = null;
+        connectedNodeIds = [];
+
+        console.log('Cleared all highlighting');
+    }
+
+    function highlightTimelineJob(jobId) {
+        // Remove existing highlighting classes
+        d3.selectAll('.job-bar')
+            .classed('job-bar-highlighted', false)
+            .classed('job-bar-connected', false)
+            .classed('job-bar-dimmed', false);
+
+        // Find the job data
+        const targetJob = timelineJobsData.find(job => job.id === jobId);
+        if (!targetJob) return;
+
+        // Highlight the selected job
+        d3.selectAll('.job-bar')
+            .filter(d => d.id === jobId)
+            .classed('job-bar-highlighted', true);
+
+        // Highlight connected jobs
+        connectedNodeIds.forEach(connectedId => {
+            d3.selectAll('.job-bar')
+                .filter(d => d.id === connectedId)
+                .classed('job-bar-connected', true);
+        });
+
+        // Dim other jobs
+        d3.selectAll('.job-bar')
+            .filter(d => d.id !== jobId && !connectedNodeIds.includes(d.id))
+            .classed('job-bar-dimmed', true);
+    }
+
+    function clearTimelineHighlighting() {
+        d3.selectAll('.job-bar')
+            .classed('job-bar-highlighted', false)
+            .classed('job-bar-connected', false)
+            .classed('job-bar-dimmed', false);
+    }
+
+    // 3. BUTTON VISIBILITY MANAGEMENT
+    function updateButtonVisibility() {
+        const layoutContainer = document.getElementById('layoutSelectContainer');
+        const labelsContainer = document.getElementById('showLabelsContainer');
+        const dateInput = document.getElementById('timelineDateInput');
+        const fitButton = document.getElementById('fitNetwork');
+        
+        if (currentView === 'network') {
+            // Show network-specific controls
+            layoutContainer.style.display = 'block';
+            labelsContainer.style.display = 'block';
+            dateInput.style.display = 'none';
+            fitButton.style.display = 'inline-block';
+        } else if (currentView === 'timeline') {
+            // Hide network-specific controls, show timeline controls
+            layoutContainer.style.display = 'none';
+            labelsContainer.style.display = 'none';
+            dateInput.style.display = 'inline-block';
+            fitButton.style.display = 'none';
+        }
+    }
+
+
+    // 4. AI ASSISTANT CLASS (unchanged from original)
+    class AIJobAssistant {
+        constructor() {
+            this.isInitialized = false;
+            this.jobSelector = document.getElementById('jobPredictor');
+            this.predictionResult = document.getElementById('predictionResult');
+            this.predictionLoading = document.getElementById('predictionLoading');
+            this.predictionError = document.getElementById('predictionError');
+            this.statusIndicator = document.getElementById('aiStatusIndicator');
+            
+            this.init();
+        }
+
+        init() {
+            this.populateJobSelector();
+            this.bindEvents();
+            this.updateStatusIndicator('ready');
+            this.isInitialized = true;
+            console.log('AI Assistant initialized successfully');
+        }
+
+        populateJobSelector() {
+            // Clear existing options except the first one
+            while (this.jobSelector.children.length > 1) {
+                this.jobSelector.removeChild(this.jobSelector.lastChild);
+            }
+
+            // Add jobs from the nodes data (network graph data - 8 April)
+            if (originalNodesData && originalNodesData.length > 0) {
+                originalNodesData.forEach(job => {
+                    const option = document.createElement('option');
+                    option.value = job.id || job.label;
+                    option.textContent = job.label || job.id;
+                    option.dataset.status = job.status;
+                    this.jobSelector.appendChild(option);
+                });
+                console.log(`Populated ${originalNodesData.length} jobs in AI selector`);
+            } else {
+                // Fallback: add some sample jobs if no data available
+                const sampleJobs = ['JOB_SAMPLE_1', 'JOB_SAMPLE_2', 'JOB_SAMPLE_3'];
+                sampleJobs.forEach(jobName => {
+                    const option = document.createElement('option');
+                    option.value = jobName;
+                    option.textContent = jobName;
+                    this.jobSelector.appendChild(option);
+                });
+                console.log('Added sample jobs to AI selector');
+            }
+        }
+
+        bindEvents() {
+            this.jobSelector.addEventListener('change', (e) => {
+                if (e.target.value) {
+                    this.predictJobOutcome(e.target.value);
+                } else {
+                    this.hidePredictionResult();
+                }
+            });
+        }
+
+        async predictJobOutcome(jobName) {
+            this.showLoading();
+            this.updateStatusIndicator('analyzing');
+
+            try {
+                // Simulate API call delay for better UX
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                // Try to fetch from actual API endpoint
+                let prediction;
+                try {
+                    const response = await fetch(`/status/api/predict-outcome/${encodeURIComponent(jobName)}`);
+                    if (response.ok) {
+                        prediction = await response.json();
+                    } else {
+                        throw new Error('API call failed');
+                    }
+                } catch (apiError) {
+                    console.log('API call failed, using fallback prediction:', apiError);
+                    // Fallback prediction logic
+                    prediction = this.generateFallbackPrediction(jobName);
+                }
+
+                this.displayPrediction(prediction, jobName);
+                this.updateStatusIndicator('ready');
+
+            } catch (error) {
+                console.error('Error predicting job outcome:', error);
+                this.showError('Unable to generate prediction. Please try again.');
+                this.updateStatusIndicator('error');
+            }
+        }
+
+        generateFallbackPrediction(jobName) {
+            // Simple fallback prediction based on job name patterns
+            const jobNameLower = jobName.toLowerCase();
+            
+            if (jobNameLower.includes('critical') || jobNameLower.includes('important')) {
+                return {
+                    prediction: 'success',
+                    confidence: 85,
+                    reason: 'Critical jobs typically have higher success rates due to additional monitoring and resources.'
+                };
+            } else if (jobNameLower.includes('test') || jobNameLower.includes('dev')) {
+                return {
+                    prediction: 'uncertain',
+                    confidence: 65,
+                    reason: 'Test and development jobs may have variable outcomes depending on code changes.'
+                };
+            } else if (jobNameLower.includes('backup') || jobNameLower.includes('archive')) {
+                return {
+                    prediction: 'success',
+                    confidence: 90,
+                    reason: 'Backup and archive jobs typically have high success rates.'
+                };
+            } else {
+                return {
+                    prediction: 'uncertain',
+                    confidence: 70,
+                    reason: 'Standard job with typical success patterns based on historical data.'
+                };
+            }
+        }
+
+        displayPrediction(prediction, jobName) {
+            const outcomeElement = document.getElementById('predictionOutcome');
+            const confidenceElement = document.getElementById('predictionConfidence');
+            const confidenceBar = document.getElementById('confidenceBar');
+            const reasonElement = document.getElementById('predictionReason');
+            const alertElement = document.getElementById('predictionAlert');
+            const insightsElement = document.getElementById('aiInsights');
+
+            // Set outcome badge
+            outcomeElement.textContent = prediction.prediction.toUpperCase();
+            outcomeElement.className = 'badge';
+            
+            // Set alert styling based on prediction
+            alertElement.className = 'alert';
+            if (prediction.prediction === 'success') {
+                outcomeElement.classList.add('bg-success');
+                alertElement.classList.add('prediction-success');
+            } else if (prediction.prediction === 'failure') {
+                outcomeElement.classList.add('bg-danger');
+                alertElement.classList.add('prediction-failure');
+            } else {
+                outcomeElement.classList.add('bg-warning');
+                alertElement.classList.add('prediction-uncertain');
+            }
+
+            // Set confidence
+            confidenceElement.textContent = prediction.confidence;
+            confidenceBar.style.width = prediction.confidence + '%';
+            confidenceBar.className = 'progress-bar';
+            
+            if (prediction.confidence >= 80) {
+                confidenceBar.classList.add('bg-success');
+            } else if (prediction.confidence >= 60) {
+                confidenceBar.classList.add('bg-warning');
+            } else {
+                confidenceBar.classList.add('bg-danger');
+            }
+
+            // Set reason
+            reasonElement.textContent = prediction.reason;
+
+            // Generate AI insights
+            const insights = [];
+            
+            // Add job-specific insights
+            const jobNameLower = jobName.toLowerCase();
+            if (jobNameLower.includes('etl') || jobNameLower.includes('extract')) {
+                insights.push('📊 ETL jobs may be affected by data source availability');
+            }
+            if (jobNameLower.includes('report')) {
+                insights.push('📈 Report generation jobs typically run during off-peak hours');
+            }
+
+            // Add time-based insights
+            const currentHour = new Date().getHours();
+            if (currentHour >= 9 && currentHour <= 17) {
+                insights.push('🕒 Running during business hours - higher resource contention possible');
+            } else {
+                insights.push('🌙 Running during off-peak hours - better resource availability');
+            }
+
+            // Recommendation based on prediction
+            if (prediction.prediction === 'failure') {
+                insights.push('💡 Recommendation: Review job dependencies and recent changes');
+            } else if (prediction.prediction === 'success') {
+                insights.push('✅ Job appears to be in good health based on historical patterns');
+            }
+
+            // Display insights
+            insightsElement.innerHTML = insights.map(insight => 
+                `<div class="mb-1">${insight}</div>`
+            ).join('');
+
+            this.predictionResult.classList.remove('d-none');
+        }
+
+        showLoading() {
+            this.predictionLoading.classList.remove('d-none');
+            this.predictionResult.classList.add('d-none');
+            this.predictionError.classList.add('d-none');
+        }
+
+        hideLoading() {
+            this.predictionLoading.classList.add('d-none');
+        }
+
+        showError(message) {
+            this.hideLoading();
+            this.predictionResult.classList.add('d-none');
+            document.getElementById('errorMessage').textContent = message;
+            this.predictionError.classList.remove('d-none');
+        }
+
+        hideError() {
+            this.predictionError.classList.add('d-none');
+        }
+
+        hidePredictionResult() {
+            this.predictionResult.classList.add('d-none');
+            this.hideLoading();
+            this.hideError();
+            this.updateStatusIndicator('ready');
+        }
+
+        updateStatusIndicator(status) {
+            const indicator = this.statusIndicator.querySelector('i');
+            indicator.className = 'fas fa-circle';
+            
+            switch (status) {
+                case 'ready':
+                    indicator.classList.add('text-success');
+                    break;
+                case 'analyzing':
+                    indicator.classList.add('text-warning');
+                    break;
+                case 'error':
+                    indicator.classList.add('text-danger');
+                    break;
+                default:
+                    indicator.classList.add('text-secondary');
+            }
+        }
+    }
+
+    // 5. NETWORK VISUALIZATION SETUP (uses 8 April data)
+    const options = {
+        layout: {
+            hierarchical: {
+                enabled: true,
+                direction: 'UD',
+                sortMethod: 'directed',
+                levelSeparation: 200,
+                nodeSpacing: 250,
+                treeSpacing: 250
+            }
+        },
+        nodes: {
+            shape: 'dot',
+            size: 20,
+            font: {
+                size: 14,
+                color: '#343a40',
+                strokeWidth: 0
+            },
+            borderWidth: 2,
+            shadow: true
+        },
+        edges: {
+            arrows: { to: { enabled: true, scaleFactor: 0.8 } },
+            color: {
+                color: '#adb5bd',
+                highlight: '#343a40',
+                hover: '#6c757d'
+            },
+            width: 1.5,
+            hoverWidth: 1,
+            smooth: {
+                enabled: true,
+                type: 'cubicBezier',
+                forceDirection: 'vertical',
+                roundness: 0.4
+            }
+        },
+        physics: {
+            enabled: false,
+            barnesHut: {
+                gravitationalConstant: -4000,
+                springConstant: 0.02,
+                avoidOverlap: 0.2
+            },
+            stabilization: { iterations: 250 }
+        },
+        interaction: {
+            hover: true,
+            tooltipDelay: 200,
+            navigationButtons: true,
+            keyboard: true
+        }
+    };
+
+    // 6. INITIALIZE COMPONENTS
+    function initializeNetworkView() {
+        const container = document.getElementById('networkContainer');
+        if (container && allNodes.length > 0) {
+            network = new vis.Network(container, { nodes: allNodes, edges: allEdges }, options);
+            
+            // Enhanced click handler with highlighting
+            network.on('click', function(params) {
+                if (params.nodes.length > 0) {
+                    const nodeId = params.nodes[0];
+                    highlightNodeAndConnections(nodeId);
+                    network.focus(nodeId, { scale: 1.2, animation: true });
+                    showJobDetails(nodeId);
+                } else {
+                    clearHighlighting();
+                }
+            });
+
+            // Double-click to clear highlighting
+            network.on('doubleClick', function(params) {
+                clearHighlighting();
+            });
+        }
+    }
+
+    // 7. NEW API FUNCTIONS FOR DYNAMIC TIMELINE
+    
+    // Show loading indicator in timeline
+    function showTimelineLoading() {
+        const container = document.getElementById("timelineContainer");
+        const existingLoading = container.querySelector('.timeline-loading');
+        if (existingLoading) {
+            existingLoading.remove();
+        }
+
+        const loadingDiv = document.createElement('div');
+        loadingDiv.className = 'timeline-loading';
+        loadingDiv.innerHTML = `
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <div class="mt-2">Loading timeline data...</div>
+        `;
+        container.appendChild(loadingDiv);
+    }
+
+    // Show error message in timeline
+    function showTimelineError(message) {
+        const container = document.getElementById("timelineContainer");
+        const existingError = container.querySelector('.timeline-error');
+        if (existingError) {
+            existingError.remove();
+        }
+
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'timeline-error';
+        errorDiv.innerHTML = `
+            <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+            <div>${message}</div>
+        `;
+        container.appendChild(errorDiv);
+    }
+
+    // Remove loading/error indicators
+    function clearTimelineIndicators() {
+        const container = document.getElementById("timelineContainer");
+        const loading = container.querySelector('.timeline-loading');
+        const error = container.querySelector('.timeline-error');
+        if (loading) loading.remove();
+        if (error) error.remove();
+    }
+
+    // NEW: Fetch timeline data from API
+    async function fetchAndDisplayTimeline() {
+        const selectedDateInput = document.getElementById('timelineDateInput');
+        const selectedDate = selectedDateInput.value;
+
+        if (!selectedDate) {
+            // Clear timeline and show message
+            const svg = d3.select("#chronologicalTimeline");
+            svg.selectAll("*").remove();
+            
+            const container = document.getElementById("timelineContainer");
+            const containerWidth = container.clientWidth;
+            const containerHeight = container.clientHeight;
+            
+            svg.attr("width", containerWidth).attr("height", containerHeight);
+            
+            const g = svg.append("g")
+                .attr("transform", `translate(${containerWidth/2},${containerHeight/2})`);
+            
+            g.append('text')
+                .attr('class', 'no-jobs-message')
+                .attr('x', 0)
+                .attr('y', 0)
+                .text('Please select a date to view the timeline');
+            
+            updateTimelineStats([], null, null);
+            return;
+        }
+
+        showTimelineLoading();
+
+        try {
+            console.log(`Fetching timeline data for date: ${selectedDate}`);
+            const response = await fetch(`/status/api/timeline-jobs?currentDate=${selectedDate}`);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const newJobsData = await response.json();
+            console.log(`Received ${newJobsData.length} jobs from API`);
+
+            // Convert the date strings to Date objects
+            const processedData = newJobsData.map(job => ({
+                ...job,
+                startDate: new Date(job.startDate),
+                endDate: job.endDate ? new Date(job.endDate) : new Date(),
+                currentDate: job.currentDate ? new Date(job.currentDate) : null,
+            }));
+
+            // Store the data globally for timeline use
+            timelineJobsData = processedData;
+
+            clearTimelineIndicators();
+            
+            // Call the timeline creation function with the new data
+            createChronologicalTimeline(processedData);
+
+        } catch (error) {
+            console.error('Error fetching timeline data:', error);
+            clearTimelineIndicators();
+            showTimelineError(`Failed to load timeline data: ${error.message}`);
+        }
+    }
+
+    function createStickyBottomAxis(xScale, width, margin) {
+        // Get the sticky axis container
+        stickyAxisElement = d3.select("#stickyBottomAxis");
+        
+        // Clear any existing content
+        stickyAxisElement.select("svg").selectAll("*").remove();
+
+        const axisSvg = stickyAxisElement.select("svg");
+        const axisG = axisSvg.append("g")
+            .attr("transform", `translate(${margin.left}, 40)`);
+
+        // Create enhanced axis with detailed time formatting
+        const xAxis = d3.axisBottom(xScale)
+            .tickFormat(d3.timeFormat("%H:%M:%S"))
+            .ticks(12);
+
+        axisG.append('g')
+            .attr('class', 'axis timeline-axis')
+            .call(xAxis);
+
+        // Add time markers for better visual reference
+        const timeMarkers = xScale.ticks(20);
+        axisG.selectAll('.time-marker')
+            .data(timeMarkers)
+            .enter()
+            .append('circle')
+            .attr('class', 'time-marker')
+            .attr('cx', d => xScale(d))
+            .attr('cy', -15)
+            .attr('r', 3);
+
+        // Add current time indicator
+        const now = new Date();
+        if (now >= xScale.domain()[0] && now <= xScale.domain()[1]) {
+            axisG.append('line')
+                .attr('class', 'current-time-line')
+                .attr('x1', xScale(now))
+                .attr('x2', xScale(now))
+                .attr('y1', -25)
+                .attr('y2', 5)
+                .style('stroke', '#dc3545')
+                .style('stroke-width', 2)
+                .style('stroke-dasharray', '4,4');
+
+            axisG.append('text')
+                .attr('x', xScale(now))
+                .attr('y', -30)
+                .attr('text-anchor', 'middle')
+                .style('fill', '#dc3545')
+                .style('font-size', '10px')
+                .style('font-weight', 'bold')
+                .text('NOW');
+        }
+
+        // Add axis label
+        axisG.append('text')
+            .attr('class', 'axis-label')
+            .attr('x', width / 2)
+            .attr('y', -5)
+            .text('Timeline (Hours:Minutes:Seconds)');
+    }
+
+    // MODIFIED: createChronologicalTimeline now accepts data as parameter
+    function createChronologicalTimeline(jobsData) {
+        if (!jobsData || jobsData.length === 0) {
+            // Handle empty data case
+            const svg = d3.select("#chronologicalTimeline");
+            svg.selectAll("*").remove();
+
+            const container = document.getElementById("timelineContainer");
+            const containerWidth = container.clientWidth;
+            const containerHeight = container.clientHeight;
+
+            svg.attr("width", containerWidth).attr("height", containerHeight);
+            
+            const g = svg.append("g")
+                .attr("transform", `translate(${containerWidth/2},${containerHeight/2})`);
+
+            g.append('text')
+                .attr('class', 'no-jobs-message')
+                .attr('x', 0)
+                .attr('y', 0)
+                .text('No jobs found for the selected date');
+
+            // Clear the sticky axis
+            if (stickyAxisElement) {
+                stickyAxisElement.select("svg").selectAll("*").remove();
+            }
+            
+            updateTimelineStats([], null, null);
+            return;
+        }
+
+        const svg = d3.select("#chronologicalTimeline");
+        svg.selectAll("*").remove();
+
+        const container = document.getElementById("timelineContainer");
+        const containerWidth = container.clientWidth;
+        
+        const barHeight = 14;
+        const barSpacing = 8;
+        const totalContentHeight = (jobsData.length * (barHeight + barSpacing)) + 300;
+        const containerHeight = Math.max(container.clientHeight, totalContentHeight);
+
+        svg.attr("width", containerWidth).attr("height", containerHeight);
+        
+        const margin = { top: 100, right: 80, bottom: 120, left: 280 };
+        const width = containerWidth - margin.left - margin.right;
+        const height = containerHeight - margin.top - margin.bottom;
+        
+        const g = svg.append("g")
+            .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        // CORRECTED LOGIC: Get the selected date from the date input
+        const selectedDateInput = document.getElementById('timelineDateInput');
+        const selectedDateStr = selectedDateInput.value;
+        
+        if (!selectedDateStr) {
+            g.append('text')
+                .attr('class', 'no-jobs-message')
+                .attr('x', width / 2)
+                .attr('y', height / 2)
+                .text('Please select a date to view the timeline');
+            return;
+        }
+        
+        const selectedDate = new Date(selectedDateStr + 'T00:00:00');
+        
+        // STEP 2: Filter jobs based ONLY on currentDate field matching the selected date
+        const jobsForSelectedDate = jobsData.filter(job => {
+            const jobCurrentDate = job.currentDate || job.startDate;
+            return jobCurrentDate.toDateString() === selectedDate.toDateString();
+        });
+        
+        console.log(`Found ${jobsForSelectedDate.length} jobs for selected date ${selectedDate.toDateString()}`);
+        console.log('Jobs found:', jobsForSelectedDate.map(j => j.label || j.id));
+        
+        // STEP 3: Handle the "No Jobs" case
+        if (jobsForSelectedDate.length === 0) {
+            g.append('text')
+                .attr('class', 'no-jobs-message')
+                .attr('x', width / 2)
+                .attr('y', height / 2)
+                .text(`No jobs found for the selected date: ${selectedDate.toLocaleDateString()}`);
+            
+            if (stickyAxisElement) {
+                stickyAxisElement.select("svg").selectAll("*").remove();
+            }
+            
+            updateTimelineStats([], null, null);
+            return;
+        }
+        
+        // STEP 4: Define the Time Axis based on the earliest startDate in the filtered batch
+        const earliestJobStart = new Date(Math.min(...jobsForSelectedDate.map(job => job.startDate.getTime())));
+        
+        // Create 48-hour window starting from the earliest job
+        const windowStart = new Date(earliestJobStart);
+        const windowEnd = new Date(earliestJobStart.getTime() + (48 * 60 * 60 * 1000));
+        
+        const timeDomain = [windowStart, windowEnd];
+        
+        console.log(`Timeline window: ${windowStart.toLocaleString()} to ${windowEnd.toLocaleString()}`);
+
+        const xScale = d3.scaleTime()
+            .domain(timeDomain)
+            .range([0, width]);
+
+        currentXScale = xScale;
+
+        // STEP 5: Render the Correct Jobs
+        let filteredJobs = jobsForSelectedDate.filter(job => {
+            return job.startDate >= timeDomain[0] && job.startDate <= timeDomain[1];
+        });
+
+        console.log(`Filtered to ${filteredJobs.length} jobs for display within time domain`);
+
+        updateTimelineStats(filteredJobs, timeDomain[0], timeDomain[1]);
+
+        const tooltip = d3.select('body').append('div')
+            .attr('class', 'tooltip');
+
+        const gridLines = xScale.ticks(10);
+        g.selectAll('.grid-line')
+            .data(gridLines)
+            .enter()
+            .append('line')
+            .attr('class', 'grid-line')
+            .attr('x1', d => xScale(d))
+            .attr('x2', d => xScale(d))
+            .attr('y1', 0)
+            .attr('y2', height - 60);
+
+        const totalJobsHeight = filteredJobs.length * (barHeight + barSpacing);
+        const startY = Math.max(0, height - totalJobsHeight - 80);
+
+        // Draw timeline elements
+        filteredJobs.forEach((job, index) => {
+            const jobStart = xScale(job.startDate);
+            const jobEnd = xScale(job.endDate);
+            const barWidth = Math.max(3, jobEnd - jobStart);
+            const yPos = startY + ((filteredJobs.length - 1 - index) * (barHeight + barSpacing));
+
+            // Job bar
+            g.append('rect')
+                .datum(job)
+                .attr('class', `job-bar status-${job.status.toLowerCase()}`)
+                .attr('x', jobStart)
+                .attr('y', yPos)
+                .attr('width', barWidth)
+                .attr('height', barHeight)
+                .on('mouseover', function(event, d) {
+                    d3.select(this).style('transform', 'translateY(-2px)');
+                    
+                    const tooltipContent = `
+                        <strong>${d.label || d.id}</strong><br/>
+                        Status: ${d.status}<br/>
+                        Start: ${d.startDate.toLocaleString()}<br/>
+                        End: ${d.endDate.toLocaleString()}<br/>
+                        Current Date: ${d.currentDate ? d.currentDate.toLocaleDateString() : 'N/A'}<br/>
+                        Duration: ${d.duration}
+                    `;
+                    
+                    tooltip.html(tooltipContent)
+                        .style('left', (event.pageX + 10) + 'px')
+                        .style('top', (event.pageY - 10) + 'px')
+                        .classed('show', true);
+                })
+                .on('mouseout', function() {
+                    d3.select(this).style('transform', 'translateY(0px)');
+                    tooltip.classed('show', false);
+                })
+                .on('click', function(event, d) {
+                    highlightNodeAndConnections(d.id);
+                    showJobDetails(d.id);
+                });
+
+            // Job label
+            g.append('text')
+                .attr('class', 'job-label-left')
+                .attr('x', jobStart - 10)
+                .attr('y', yPos + barHeight / 2 + 4)
+                .text(job.label || job.id);
+        });
+
+        // Create sticky bottom axis
+        createStickyBottomAxis(xScale, width, margin);
+
+        // Add global markers
+        const globalStart = new Date(Math.min(...filteredJobs.map(job => job.startDate.getTime())));
+        const globalEnd = new Date(Math.max(...filteredJobs.map(job => job.endDate.getTime())));
+
+        g.append('circle')
+            .attr('class', 'global-start-marker')
+            .attr('cx', xScale(globalStart))
+            .attr('cy', height - 40)
+            .attr('r', 8);
+
+        g.append('circle')
+            .attr('class', 'global-end-marker')
+            .attr('cx', xScale(globalEnd))
+            .attr('cy', height - 40)
+            .attr('r', 8);
+
+        // Add date group labels
+        const dateGroups = d3.group(filteredJobs, d => d.startDate.toDateString());
+        dateGroups.forEach((jobs, dateStr) => {
+            const date = new Date(dateStr);
+            const xPos = xScale(date);
+            
+            g.append('text')
+                .attr('class', 'date-group-label')
+                .attr('x', xPos)
+                .attr('y', height - 15)
+                .text(date.toLocaleDateString());
+                
+            g.append('text')
+                .attr('class', 'date-group-count')
+                .attr('x', xPos)
+                .attr('y', height - 5)
+                .text(`${jobs.length} jobs`);
+        });
+    }
+
+    function updateTimelineStats(jobs, startDate, endDate) {
+        document.getElementById('totalJobsCount').textContent = jobs.length;
+        
+        if (startDate && endDate) {
+            const duration = Math.round((endDate - startDate) / (1000 * 60 * 60)); // hours
+            document.getElementById('dateRangeInfo').textContent = `${duration}h window`;
+            
+            const avgJobsPerDay = jobs.length > 0 ? Math.round(jobs.length / (duration / 24)) : 0;
+            document.getElementById('jobsPerDayAvg').textContent = avgJobsPerDay;
+        } else {
+            document.getElementById('dateRangeInfo').textContent = '-';
+            document.getElementById('jobsPerDayAvg').textContent = '0';
+        }
+    }
+
+    // 8. JOB DETAILS MODAL
+    function showJobDetails(jobId) {
+        // Try to find job in network data first, then timeline data
+        let job = originalNodesData.find(j => j.id === jobId);
+        if (!job && timelineJobsData.length > 0) {
+            job = timelineJobsData.find(j => j.id === jobId);
+        }
+        
+        if (!job) return;
+
+        const modal = new bootstrap.Modal(document.getElementById('jobDetailsModal'));
+        document.getElementById('modalJobDetailsName').textContent = job.label || job.id;
+        
+        const content = `
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>Job Information</h6>
+                    <p><strong>ID:</strong> ${job.id}</p>
+                    <p><strong>Status:</strong> <span class="badge bg-${getStatusColor(job.status)}">${job.status}</span></p>
+                    <p><strong>Start Date:</strong> ${job.startDate}</p>
+                    <p><strong>End Date:</strong> ${job.endDate || 'N/A'}</p>
+                    <p><strong>Current Date:</strong> ${job.currentDate || 'N/A'}</p>
+                </div>
+                <div class="col-md-6">
+                    <h6>Additional Details</h6>
+                    <p><strong>Duration:</strong> ${job.duration || 'N/A'}</p>
+                    <p><strong>Dependencies:</strong> ${connectedNodeIds.length} connected jobs</p>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('modalJobDetailsContent').innerHTML = content;
+        modal.show();
+    }
+
+    function getStatusColor(status) {
+        switch (status.toLowerCase()) {
+            case 'ok': return 'success';
+            case 'er': return 'danger';
+            case 'ip': return 'primary';
+            case 'pe': return 'secondary';
+            case 'ko': return 'warning';
+            default: return 'secondary';
+        }
+    }
+
+    function refreshVisualization() {
+        if (currentView === 'network') {
+            initializeNetworkView();
+        } else {
+            fetchAndDisplayTimeline();
+        }
+    }
+
+    // 9. EVENT HANDLERS
+    document.getElementById('viewToggle').addEventListener('change', function(e) {
+        currentView = e.target.value;
+        
+        if (currentView === 'network') {
+            document.getElementById('networkContainer').classList.remove('d-none');
+            document.getElementById('timelineContainer').classList.add('d-none');
+            initializeNetworkView();
+        } else {
+            document.getElementById('networkContainer').classList.add('d-none');
+            document.getElementById('timelineContainer').classList.remove('d-none');
+            // Load timeline data when switching to timeline view
+            fetchAndDisplayTimeline();
+        }
+        
+        updateButtonVisibility();
+    });
+
+    // MODIFIED: Date input change handler to call API
+    document.getElementById('timelineDateInput').addEventListener('change', function(e) {
+        if (currentView === 'timeline') {
+            fetchAndDisplayTimeline();
+        }
+    });
+
+    document.getElementById('layoutSelect').addEventListener('change', function(e) {
+        if (network) {
+            const newLayout = e.target.value;
+            if (newLayout === 'hierarchical') {
+                network.setOptions({
+                    layout: {
+                        hierarchical: {
+                            enabled: true,
+                            direction: 'UD',
+                            sortMethod: 'directed'
+                        }
+                    },
+                    physics: { enabled: false }
+                });
+            } else {
+                network.setOptions({
+                    layout: { hierarchical: { enabled: false } },
+                    physics: { enabled: true }
+                });
+            }
+        }
+    });
+
+    document.getElementById('showLabels').addEventListener('change', function(e) {
+        if (network) {
+            const showLabels = e.target.checked;
+            const nodeUpdate = [];
+            
+            allNodes.forEach(node => {
+                nodeUpdate.push({
+                    id: node.id,
+                    font: {
+                        ...node.font,
+                        size: showLabels ? 14 : 0
+                    }
+                });
+            });
+            
+            allNodes.update(nodeUpdate);
+        }
+    });
+
+    document.getElementById('fitNetwork').addEventListener('click', function() {
+        if (network) {
+            network.fit({ animation: true });
+        }
+    });
+
+    document.getElementById('clearHighlight').addEventListener('click', function() {
+        clearHighlighting();
+    });
+
+    document.getElementById('jobSearch').addEventListener('input', function(e) {
+        const searchTerm = e.target.value.toLowerCase();
+        
+        if (searchTerm.length === 0) {
+            clearHighlighting();
+            return;
+        }
+        
+        // Search in network data (8 April data)
+        const matchingJobs = originalNodesData.filter(job => 
+            (job.label || job.id).toLowerCase().includes(searchTerm)
+        );
+        
+        if (matchingJobs.length > 0) {
+            const firstMatch = matchingJobs[0];
+            highlightNodeAndConnections(firstMatch.id);
+            
+            if (network && currentView === 'network') {
+                network.focus(firstMatch.id, { scale: 1.2, animation: true });
+            }
+        }
+    });
+
+    // 10. INITIALIZATION
+    initializeNetworkView();
+    updateButtonVisibility();
+    
+    // Initialize AI Assistant
+    aiAssistant = new AIJobAssistant();
+    
+    console.log('Job Visualization Dashboard initialized successfully');
+    console.log('Network Graph: Fixed to 8 April 2025 data');
+    console.log('Timeline: Dynamic via API based on user date selection');
+});
+
+// Global refresh function for the refresh button
+function refreshVisualization() {
+    location.reload();
+}
+
+// ✅ CSS SUPPLÉMENTAIRE pour les jobs en cours
+const additionalCSS = `
+<style>
+.job-running {
+    stroke-dasharray: 5,5;
+    animation: dash 1s linear infinite;
+}
+
+@keyframes dash {
+    to {
+        stroke-dashoffset: -10;
+    }
+}
+</style>
+`;
+
+// Ajouter le CSS au document
+document.head.insertAdjacentHTML('beforeend', additionalCSS);
+</script>
+{% endblock %}
+

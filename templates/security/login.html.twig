@@ -1,0 +1,194 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Login - Job Visualization{% endblock %}
+
+{# On surcharge le bloc qui contient TOUTE la page pour un contrôle total #}
+{% block page_wrapper %}
+
+<style>
+    /* --- Intégration des polices depuis Google Fonts --- */
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Lato:wght@400;700&display=swap' );
+
+    /* --- Animation de fond (inchangée) --- */
+    @keyframes gradient-animation {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+
+    /* --- Conteneur principal de la page --- */
+    .login-page-wrapper {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 2rem;
+        background: linear-gradient(-45deg, #667eea, #764ba2, #23a6d5, #23d5ab);
+        background-size: 400% 400%;
+        animation: gradient-animation 15s ease infinite;
+        color: white;
+        font-family: 'Lato', sans-serif; /* Police par défaut */
+    }
+
+    .login-container {
+        display: flex;
+        width: 100%;
+        max-width: 950px; /* Légèrement plus large pour plus d'espace */
+        align-items: center;
+        justify-content: space-between; /* CHANGEMENT : Crée un espace maximal entre les colonnes */
+    }
+
+    /* --- Colonne de Gauche (Marque) --- */
+    .brand-column {
+        flex-basis: 50%; /* Définit la largeur de base */
+        padding-right: 2rem; /* Espace de sécurité */
+        animation: slideInFromLeft 0.8s ease-out;
+    }
+
+    .brand-content {
+        position: relative;
+        padding-left: 2.5rem; /* Espace pour la ligne décorative */
+        border-left: 4px solid rgba(255, 255, 255, 0.5); /* NOUVEAU : Ligne décorative */
+        border-radius: 2px; /* Adoucit les bords de la ligne */
+    }
+
+    .brand-column .brand-icon {
+        font-size: 5rem; /* Taille ajustée */
+        margin-bottom: 1.5rem;
+        display: block;
+        text-shadow: 0 5px 20px rgba(0,0,0,0.25);
+    }
+
+    .brand-column .brand-title {
+        font-family: 'Poppins', sans-serif; /* Police spéciale pour le titre */
+        font-size: 3.2rem;
+        font-weight: 700;
+        line-height: 1.2;
+        margin-bottom: 1rem;
+    }
+
+    .brand-column .brand-tagline {
+        font-size: 1.1rem;
+        opacity: 0.8;
+        max-width: 350px;
+    }
+
+    /* --- Colonne de Droite (Formulaire) --- */
+    .login-column {
+        flex-basis: 50%; /* Définit la largeur de base */
+        display: flex;
+        justify-content: flex-end; /* Aligne la carte à droite de sa colonne */
+    }
+
+    .login-card {
+        width: 100%;
+        max-width: 400px;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 20px;
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        padding: 2.5rem;
+        animation: fadeIn 0.7s ease-out 0.2s;
+        animation-fill-mode: backwards;
+    }
+
+    /* --- Animations --- */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes slideInFromLeft {
+        from { opacity: 0; transform: translateX(-40px); }
+        to { opacity: 1; transform: translateX(0); }
+    }
+
+    /* --- Styles du formulaire (inchangés) --- */
+    .login-card .form-control { background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.3); color: white; border-radius: 10px; padding: 0.85rem 1rem; font-family: 'Lato', sans-serif; }
+    .login-card .form-control::placeholder { color: rgba(255, 255, 255, 0.7); }
+    .login-card .form-control:focus { background: rgba(255, 255, 255, 0.25); box-shadow: none; border-color: rgba(255, 255, 255, 0.5); }
+    .login-card .btn-primary { background: #ffffff; color: #667eea; font-weight: bold; border: none; border-radius: 10px; padding: 14px; font-family: 'Poppins', sans-serif; font-weight: 600; transition: all 0.3s ease; }
+    .login-card .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2); }
+    .login-card .alert-danger { background-color: rgba(220, 53, 69, 0.8); color: white; border: none; border-radius: 10px; }
+
+    /* --- Responsive pour les petits écrans --- */
+    @media (max-width: 768px) {
+        .login-container { flex-direction: column; }
+        .brand-column { padding-right: 0; margin-bottom: 3rem; flex-basis: auto; }
+        .login-column { flex-basis: auto; justify-content: center; width: 100%; }
+        .brand-content { padding-left: 0; border-left: none; text-align: center; }
+        .brand-column .brand-tagline { margin-left: auto; margin-right: auto; }
+    }
+</style>
+
+<div class="login-page-wrapper">
+    <div class="login-container">
+        <!-- Colonne de Gauche : Marque -->
+        <div class="brand-column">
+            <div class="brand-content">
+                <i class="fas fa-project-diagram brand-icon"></i>
+                <h1 class="brand-title">Job Visualization</h1>
+                <p class="brand-tagline">Monitor, analyze, and optimize your data jobs with an intuitive and powerful interface.</p>
+            </div>
+        </div>
+
+        <!-- Colonne de Droite : Formulaire de connexion -->
+        <div class="login-column">
+            <div class="login-card">
+                <h2 class="h3 mb-4 text-center" style="font-family: 'Poppins', sans-serif; font-weight: 600;">Login</h2>
+
+                {% if error %}
+                    <div class="alert alert-danger" role="alert">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        {{ error.messageKey|trans(error.messageData, 'security') }}
+                    </div>
+                {% endif %}
+
+                <form method="post" action="{{ path('app_login') }}">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username</label>
+                        <input type="text" class="form-control" id="username" name="_username" value="{{ last_username }}" required autofocus placeholder="Enter your username">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" class="form-control" id="password" name="_password" required placeholder="Enter your password">
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="remember_me" name="_remember_me" checked>
+                            <label class="form-check-label" for="remember_me">Remember me</label>
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token('authenticate') }}">
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Login</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# Le bloc Javascript reste le même #}
+{% block javascripts %}
+    {{ parent() }}
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.querySelector('form');
+        if (form) {
+            const submitBtn = form.querySelector('button[type="submit"]');
+            form.addEventListener('submit', function() {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = `<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Logging in...`;
+            });
+        }
+    });
+    </script>
+{% endblock %}
+
+{% endblock page_wrapper %}

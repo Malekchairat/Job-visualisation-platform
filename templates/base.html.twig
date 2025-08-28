@@ -1,17 +1,548 @@
 <!DOCTYPE html>
-<html>
-    <head>
-        <meta charset="UTF-8">
-        <title>{% block title %}Welcome!{% endblock %}</title>
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>⚫️</text><text y=%221.3em%22 x=%220.2em%22 font-size=%2276%22 fill=%22%23fff%22>sf</text></svg>">
-        {% block stylesheets %}
-        {% endblock %}
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Job Status Dashboard{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Vis.js for network visualization -->
+    <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <!-- Custom CSS -->
+    <link href="{{ asset('css/dashboard.css'   ) }}" rel="stylesheet">
 
-        {% block javascripts %}
-            {% block importmap %}{{ importmap('app') }}{% endblock %}
+    
+    <style>
+        :root {
+            --status-in-progress: #007bff;
+            --status-completed: #28a745;
+            --status-error: #dc3545;
+            --status-pending: #6c757d;
+            --status-unknown: #ffc107;
+        }
+
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .navbar-brand {
+            font-weight: bold;
+            font-size: 1.5rem;
+        }
+
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .status-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+        }
+
+        .status-in-progress {
+            background-color: var(--status-in-progress);
+            color: white;
+        }
+
+        .status-completed {
+            background-color: var(--status-completed);
+            color: white;
+        }
+
+        .status-error {
+            background-color: var(--status-error);
+            color: white;
+        }
+
+        .status-pending {
+            background-color: var(--status-pending);
+            color: white;
+        }
+
+        .status-unknown {
+            background-color: var(--status-unknown);
+            color: black;
+        }
+
+        .job-card {
+            border-left: 4px solid;
+            transition: all 0.3s ease;
+        }
+
+        .job-card.status-in-progress {
+            border-left-color: var(--status-in-progress);
+        }
+
+        .job-card.status-completed {
+            border-left-color: var(--status-completed);
+        }
+
+        .job-card.status-error {
+            border-left-color: var(--status-error);
+        }
+
+        .job-card.status-pending {
+            border-left-color: var(--status-pending);
+        }
+
+        .search-container {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 25px;
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .table {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .table thead th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 1rem;
+        }
+
+        .table tbody tr {
+            transition: all 0.3s ease;
+        }
+
+        .table tbody tr:hover {
+            background-color: #f8f9fa;
+            transform: scale(1.01);
+        }
+
+        .visualization-container {
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            min-height: 600px;
+        }
+
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 2rem;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .stats-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .stats-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .job-running {
+            animation: pulse 2s infinite;
+        }
+
+        .network-container {
+            height: 500px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            background: #fafafa;
+        }
+
+        @media (max-width: 768px) {
+            .card {
+                margin-bottom: 1rem;
+            }
+            
+            .search-container {
+                padding: 1rem;
+            }
+            
+            .stats-number {
+                font-size: 2rem;
+            }
+        }
+
+        /* Styles from new base.html.twig */
+        .user-info {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 5px 15px;
+            margin-right: 10px;
+        }
+        
+        .dropdown-menu {
+            border-radius: 10px;
+            border: none;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .dropdown-item {
+            border-radius: 5px;
+            margin: 2px 5px;
+        }
+        
+        .dropdown-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .alert {
+            border-radius: 10px;
+            border: none;
+        }
+        
+        .main-content {
+            min-height: calc(100vh - 76px);
+        }
+    </style>
+
+    {% block stylesheets %}{% endblock %}
+</head>
+<body>
+{% block page_wrapper %}
+    {# MODIFICATION 1 : On ajoute une condition pour afficher la barre de navigation #}
+    {% if show_nav | default(true) %}
+        {% if is_authenticated() %}
+            <!-- Navigation Bar for authenticated users -->
+            <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+                <div class="container-fluid">
+                    <a class="navbar-brand" href="{{ path('app_job_status_visualization') }}">
+                        <i class="fas fa-project-diagram me-2"></i>
+                        Job Visualization
+                    </a>
+                    
+                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                    
+                    <div class="collapse navbar-collapse" id="navbarNav">
+                        <!-- CHANGE #1: Changed me-auto to mx-auto to center the links -->
+                        <ul class="navbar-nav mx-auto">
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ path('app_job_status_visualization') }}">
+                                    <i class="fas fa-chart-network me-1"></i>
+                                    Visualisation
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ path('app_job_status') }}">
+                                    <i class="fas fa-list me-1"></i>
+                                    Liste des Jobs
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ path('app_job_history') }}">
+                                    <i class="fas fa-history me-1"></i>History
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ path('app_job_dependencies') }}">
+                                    <i class="fas fa-sitemap me-1"></i>Dependencies
+                                </a>
+                            </li>
+                        </ul>
+                        
+                        <!-- User Info and Logout -->
+                        <div class="d-flex align-items-center">
+                            <div class="user-info text-white">
+                                <i class="fas fa-user me-2"></i>
+                                <span>{{ get_current_user() }}</span>
+                            </div>
+                            
+                            <div class="dropdown">
+                                <button class="btn btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    <i class="fas fa-cog"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li>
+                                        <h6 class="dropdown-header">
+                                            <i class="fas fa-user-circle me-2"></i>
+                                            {{ get_current_user() }}
+                                        </h6>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <span class="dropdown-item-text">
+                                            <small class="text-muted">
+                                                <i class="fas fa-clock me-1"></i>
+                                                Connecté depuis {{ get_user_info().login_time|date('H:i') }}
+                                            </small>
+                                        </span>
+                                    </li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <a class="dropdown-item text-danger" href="{{ path('app_logout') }}">
+                                            <i class="fas fa-sign-out-alt me-2"></i>
+                                            Se déconnecter
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+        {% else %}
+            <!-- Navigation for non-authenticated users (original navigation) -->
+            <nav class="navbar navbar-expand-lg navbar-dark">
+                <div class="container">
+                    <a class="navbar-brand" href="{{ path('app_home') }}">
+                        <i class="fas fa-tasks me-2"></i>Job Status Dashboard
+                    </a>
+                    
+                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                    
+                    <div class="collapse navbar-collapse" id="navbarNav">
+                        <ul class="navbar-nav ms-auto">
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ path('app_home') }}">
+                                    <i class="fas fa-home me-1"></i>Home
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ path('app_job_status') }}">
+                                    <i class="fas fa-list me-1"></i>Job Status
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ path('app_job_status_visualization') }}">
+                                    <i class="fas fa-project-diagram me-1"></i>Visualization
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ path('app_job_history') }}">
+                                    <i class="fas fa-history me-1"></i>History
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{{ path('app_job_dependencies') }}">
+                                    <i class="fas fa-sitemap me-1"></i>Dependencies
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+        {% endif %}
+    {% endif %} {# MODIFICATION 2 : On ferme la condition #}
+
+    <!-- Flash Messages -->
+    {% for type, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="alert alert-{{ type == 'error' ? 'danger' : type }} alert-dismissible fade show m-3" role="alert">
+                {% if type == 'success' %}
+                    <i class="fas fa-check-circle me-2"></i>
+                {% elseif type == 'error' or type == 'danger' %}
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                {% elseif type == 'info' %}
+                    <i class="fas fa-info-circle me-2"></i>
+                {% elseif type == 'warning' %}
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                {% endif %}
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endfor %}
+
+    <!-- Main Content -->
+    <!-- CHANGE #2: Added mt-4 to add space below the navbar -->
+    <main class="{% if is_authenticated() %}main-content mt-4{% else %}container mt-4{% endif %}">
+        {# J'ai retiré le <div class="container"> d'ici pour le mettre dans un bloc, c'est plus propre #}
+        {% block main_container %}
+            <div class="container">
+                {% block body %}{% endblock %}
+            </div>
         {% endblock %}
-    </head>
-    <body>
-        {% block body %}{% endblock %}
-    </body>
+    </main>
+
+    <!-- Footer -->
+    {# MODIFICATION 3 : On ajoute une condition pour afficher le pied de page #}
+    {% if show_footer | default(true) %}
+        {% if is_authenticated() %}
+            <footer class="bg-light text-center py-3 mt-5">
+                <div class="container">
+                    <small class="text-muted">
+                        <i class="fas fa-shield-alt me-1"></i>
+                        Job Visualization Dashboard - Session sécurisée
+                        {% if get_user_info().remember_me %}
+                            <span class="badge bg-success ms-2">
+                                <i class="fas fa-clock me-1"></i>Session étendue
+                            </span>
+                        {% endif %}
+                    </small>
+                </div>
+            </footer>
+        {% else %}
+            <footer class="mt-5 py-4 bg-dark text-light text-center">
+                <div class="container">
+                    <p class="mb-0">&copy; {{ "now"|date("Y") }} Job Status Dashboard. Built with Symfony & Bootstrap.</p>
+                </div>
+            </footer>
+        {% endif %}
+    {% endif %} {# MODIFICATION 4 : On ferme la condition #}
+
+     {% endblock page_wrapper %}
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom JavaScript -->
+    <script>
+        // Auto-refresh functionality
+        <!--
+        function autoRefresh(    ) {
+            if (window.location.pathname.includes('/status') || window.location.pathname.includes('/visualization')) {
+                setTimeout(() => {
+                    window.location.reload();
+                }, 30000); // Refresh every 30 seconds
+            }
+        }-->
+
+        // Initialize auto-refresh
+        document.addEventListener('DOMContentLoaded', autoRefresh);
+
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+
+        // Add fade-in animation to cards
+        document.addEventListener('DOMContentLoaded', function() {
+            const cards = document.querySelectorAll('.card');
+            cards.forEach((card, index) => {
+                setTimeout(() => {
+                    card.classList.add('fade-in');
+                }, index * 100);
+            });
+        });
+
+        // Auto-dismiss alerts after 5 seconds
+        document.addEventListener('DOMContentLoaded', function() {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(function(alert) {
+                setTimeout(function() {
+                    if (alert && alert.parentNode) {
+                        const bsAlert = new bootstrap.Alert(alert);
+                        bsAlert.close();
+                    }
+                }, 5000);
+            });
+        });
+
+        // Session activity tracking
+        {% if is_authenticated() %}
+        let lastActivity = Date.now();
+        
+        // Track user activity
+        ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'].forEach(function(event) {
+            document.addEventListener(event, function() {
+                lastActivity = Date.now();
+            }, true);
+        });
+        
+        // Check session validity every 5 minutes
+        setInterval(function() {
+            fetch('{{ path('app_check_auth') }}')
+                .then(response => response.json())
+                .then(data => {
+                    if (!data.authenticated) {
+                        alert('Votre session a expiré. Vous allez être redirigé vers la page de connexion.');
+                        window.location.href = '{{ path('app_login') }}';
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur lors de la vérification de session:', error);
+                });
+        }, 300000); // 5 minutes
+        {% endif %}
+    </script>
+
+    {% block javascripts %}{% endblock %}
+</body>
 </html>

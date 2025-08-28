@@ -1,0 +1,638 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Executive Dashboard - Job Management{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --executive-primary: #1e40af;
+            --executive-secondary: #059669;
+            --executive-accent: #dc2626;
+            --executive-warning: #d97706;
+            --executive-bg: #f8fafc;
+            --executive-card: #ffffff;
+            --executive-text: #1f2937;
+            --executive-text-light: #6b7280;
+            --executive-border: #e5e7eb;
+            --executive-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Inter', system-ui, sans-serif;
+        }
+
+        .executive-container {
+            background: var(--executive-card);
+            border-radius: 24px;
+            margin: 20px;
+            padding: 40px;
+            box-shadow: var(--executive-shadow);
+            backdrop-filter: blur(10px);
+        }
+
+        .executive-header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 30px;
+            border-bottom: 2px solid var(--executive-border);
+        }
+
+        .executive-title {
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--executive-primary);
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, var(--executive-primary), var(--executive-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .executive-subtitle {
+            font-size: 1.25rem;
+            color: var(--executive-text-light);
+            font-weight: 400;
+        }
+
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .kpi-card {
+            background: var(--executive-card);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--executive-border);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+        }
+
+        .kpi-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, var(--executive-primary), var(--executive-secondary));
+        }
+
+        .kpi-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .kpi-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: white;
+            margin-bottom: 15px;
+        }
+
+        .kpi-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--executive-text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 10px;
+        }
+
+        .kpi-value {
+            font-size: 3rem;
+            font-weight: 700;
+            color: var(--executive-text);
+            margin-bottom: 15px;
+            line-height: 1;
+        }
+
+        .kpi-target {
+            font-size: 0.875rem;
+            color: var(--executive-text-light);
+            margin-bottom: 15px;
+        }
+
+        .kpi-trend {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .trend-up { color: var(--executive-secondary); }
+        .trend-down { color: var(--executive-accent); }
+        .trend-stable { color: var(--executive-text-light); }
+
+        .kpi-progress {
+            width: 100%;
+            height: 8px;
+            background: var(--executive-bg);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 15px;
+        }
+
+        .kpi-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--executive-primary), var(--executive-secondary));
+            transition: width 0.8s ease;
+        }
+
+        .insights-section {
+            margin-bottom: 40px;
+        }
+
+        .insights-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+        }
+
+        .insight-card {
+            background: var(--executive-card);
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            border: 1px solid var(--executive-border);
+        }
+
+        .insight-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .insight-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.1rem;
+        }
+
+        .insight-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--executive-text);
+        }
+
+        .chart-container {
+            background: var(--executive-card);
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            border: 1px solid var(--executive-border);
+            height: 400px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 40px;
+        }
+
+        .btn-executive {
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--executive-primary), #3b82f6);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(30, 64, 175, 0.3);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, var(--executive-secondary), #10b981);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(5, 150, 105, 0.3);
+        }
+
+        .alert-executive {
+            background: linear-gradient(135deg, #fef2f2, #fee2e2);
+            border: 1px solid #fecaca;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            color: var(--executive-accent);
+        }
+
+        .alert-executive h5 {
+            color: var(--executive-accent);
+            margin-bottom: 10px;
+        }
+
+        .metric-comparison {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid var(--executive-border);
+        }
+
+        .metric-comparison:last-child {
+            border-bottom: none;
+        }
+
+        .metric-name {
+            font-weight: 600;
+            color: var(--executive-text);
+        }
+
+        .metric-values {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .metric-current {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--executive-primary);
+        }
+
+        .metric-previous {
+            font-size: 0.875rem;
+            color: var(--executive-text-light);
+        }
+
+        @media (max-width: 768px) {
+            .executive-container {
+                margin: 10px;
+                padding: 20px;
+            }
+            
+            .executive-title {
+                font-size: 2rem;
+            }
+            
+            .kpi-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .insights-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+<div class="executive-container">
+    <!-- Header -->
+    <div class="executive-header">
+        <h1 class="executive-title">Executive Dashboard</h1>
+        <p class="executive-subtitle">Strategic Overview & Performance Insights</p>
+        <div class="mt-3">
+            <span class="badge bg-success me-2">Live Data</span>
+            <span class="badge bg-info">Last Updated: {{ "now"|date("Y-m-d H:i:s") }}</span>
+        </div>
+    </div>
+
+    <!-- Critical Alerts -->
+    <div class="alert-executive">
+        <h5><i class="fas fa-exclamation-triangle me-2"></i>Executive Attention Required</h5>
+        <p class="mb-0">2 critical jobs require immediate attention. System performance is within acceptable parameters.</p>
+    </div>
+
+    <!-- Key Performance Indicators -->
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-icon" style="background: linear-gradient(135deg, var(--executive-primary), #3b82f6);">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <div class="kpi-title">System Availability</div>
+            <div class="kpi-value">{{ kpis.systemAvailability.value }}%</div>
+            <div class="kpi-target">Target: {{ kpis.systemAvailability.target }}%</div>
+            <div class="kpi-trend trend-{{ kpis.systemAvailability.trend }}">
+                <i class="fas fa-arrow-{{ kpis.systemAvailability.trend == 'up' ? 'up' : (kpis.systemAvailability.trend == 'down' ? 'down' : 'right') }}"></i>
+                <span>+0.2% vs last month</span>
+            </div>
+            <div class="kpi-progress">
+                <div class="kpi-progress-bar" style="width: {{ kpis.systemAvailability.value }}%;"></div>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon" style="background: linear-gradient(135deg, var(--executive-secondary), #10b981);">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="kpi-title">Job Success Rate</div>
+            <div class="kpi-value">{{ kpis.jobSuccessRate.value }}%</div>
+            <div class="kpi-target">Target: {{ kpis.jobSuccessRate.target }}%</div>
+            <div class="kpi-trend trend-{{ kpis.jobSuccessRate.trend }}">
+                <i class="fas fa-arrow-{{ kpis.jobSuccessRate.trend == 'up' ? 'up' : (kpis.jobSuccessRate.trend == 'down' ? 'down' : 'right') }}"></i>
+                <span>+1.2% vs target</span>
+            </div>
+            <div class="kpi-progress">
+                <div class="kpi-progress-bar" style="width: {{ kpis.jobSuccessRate.value }}%;"></div>
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon" style="background: linear-gradient(135deg, var(--executive-warning), #f59e0b);">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div class="kpi-title">Avg Processing Time</div>
+            <div class="kpi-value">{{ kpis.averageProcessingTime.value }}<span style="font-size: 1rem; color: var(--executive-text-light);">min</span></div>
+            <div class="kpi-target">Target: {{ kpis.averageProcessingTime.target }} min</div>
+            <div class="kpi-trend trend-{{ kpis.averageProcessingTime.trend }}">
+                <i class="fas fa-arrow-{{ kpis.averageProcessingTime.trend == 'up' ? 'up' : (kpis.averageProcessingTime.trend == 'down' ? 'down' : 'right') }}"></i>
+                <span>-4.2 min improvement</span>
+            </div>
+            <div class="kpi-progress">
+                <div class="kpi-progress-bar" style="width: {{ (100 - (kpis.averageProcessingTime.value / kpis.averageProcessingTime.target * 100)) + 50 }}%;"></div> {# Adjusted for inverse logic #}
+            </div>
+        </div>
+
+        <div class="kpi-card">
+            <div class="kpi-icon" style="background: linear-gradient(135deg, var(--executive-accent), #f87171);">
+                <i class="fas fa-dollar-sign"></i>
+            </div>
+            <div class="kpi-title">Cost Per Job</div>
+            <div class="kpi-value">${{ kpis.costPerJob.value }}</div>
+            <div class="kpi-target">Target: ${{ kpis.costPerJob.target }}</div>
+            <div class="kpi-trend trend-{{ kpis.costPerJob.trend }}">
+                <i class="fas fa-arrow-{{ kpis.costPerJob.trend == 'up' ? 'up' : (kpis.costPerJob.trend == 'down' ? 'down' : 'right') }}"></i>
+                <span>-${{ (kpis.costPerJob.target - kpis.costPerJob.value)|number_format(2) }} cost reduction</span>
+            </div>
+            <div class="kpi-progress">
+                <div class="kpi-progress-bar" style="width: {{ (100 - (kpis.costPerJob.value / kpis.costPerJob.target * 100)) + 50 }}%;"></div> {# Adjusted for inverse logic #}
+            </div>
+        </div>
+    </div>
+
+    <!-- Business Insights -->
+    <div class="insights-section">
+        <h2 class="mb-4" style="color: var(--executive-text); font-weight: 600;">Business Insights</h2>
+        <div class="insights-grid">
+            <div class="insight-card">
+                <div class="insight-header">
+                    <div class="insight-icon" style="background: var(--executive-primary);">
+                        <i class="fas fa-trending-up"></i>
+                    </div>
+                    <div class="insight-title">Performance Trends</div>
+                </div>
+                <div class="metric-comparison">
+                    <div class="metric-name">Jobs Processed Today</div>
+                    <div class="metric-values">
+                        <div class="metric-current">1,247</div>
+                        <div class="metric-previous">vs 1,156 yesterday</div>
+                    </div>
+                </div>
+                <div class="metric-comparison">
+                    <div class="metric-name">Peak Hour Efficiency</div>
+                    <div class="metric-values">
+                        <div class="metric-current">94%</div>
+                        <div class="metric-previous">vs 89% last week</div>
+                    </div>
+                </div>
+                <div class="metric-comparison">
+                    <div class="metric-name">Resource Utilization</div>
+                    <div class="metric-values">
+                        <div class="metric-current">72%</div>
+                        <div class="metric-previous">vs 68% average</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="insight-card">
+                <div class="insight-header">
+                    <div class="insight-icon" style="background: var(--executive-secondary);">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <div class="insight-title">Risk Assessment</div>
+                </div>
+                <div class="metric-comparison">
+                    <div class="metric-name">Critical Jobs at Risk</div>
+                    <div class="metric-values">
+                        <div class="metric-current" style="color: var(--executive-accent);">2</div>
+                        <div class="metric-previous">requires attention</div>
+                    </div>
+                </div>
+                <div class="metric-comparison">
+                    <div class="metric-name">System Health Score</div>
+                    <div class="metric-values">
+                        <div class="metric-current">94.2</div>
+                        <div class="metric-previous">excellent</div>
+                    </div>
+                </div>
+                <div class="metric-comparison">
+                    <div class="metric-name">Predicted Downtime</div>
+                    <div class="metric-values">
+                        <div class="metric-current">0.2%</div>
+                        <div class="metric-previous">next 30 days</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="insight-card">
+                <div class="insight-header">
+                    <div class="insight-icon" style="background: var(--executive-warning);">
+                        <i class="fas fa-lightbulb"></i>
+                    </div>
+                    <div class="insight-title">AI Recommendations</div>
+                </div>
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-3">
+                        <i class="fas fa-check-circle text-success me-2"></i>
+                        <strong>Optimize peak hours:</strong> Consider load balancing during 2-4 PM
+                    </li>
+                    <li class="mb-3">
+                        <i class="fas fa-exclamation-circle text-warning me-2"></i>
+                        <strong>Resource allocation:</strong> Increase capacity for critical jobs
+                    </li>
+                    <li class="mb-0">
+                        <i class="fas fa-info-circle text-info me-2"></i>
+                        <strong>Maintenance window:</strong> Schedule during low-traffic hours
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Charts -->
+    <div class="row mb-4">
+        <div class="col-lg-8 mb-3">
+            <div class="chart-container">
+                <h5 class="mb-3">24-Hour Performance Overview</h5>
+                <canvas id="performanceOverviewChart"></canvas>
+            </div>
+        </div>
+        <div class="col-lg-4 mb-3">
+            <div class="chart-container">
+                <h5 class="mb-3">Resource Utilization</h5>
+                <canvas id="resourceChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+        <a href="{{ path('app_job_status') }}" class="btn-executive btn-primary">
+            <i class="fas fa-table"></i>
+            View Detailed Status
+        </a>
+        <a href="{{ path('app_executive_report_export') }}" class="btn-executive btn-secondary">
+            <i class="fas fa-file-download"></i>
+            Download Executive Report
+        </a>
+        <button class="btn-executive" style="background: var(--executive-warning); color: white;" onclick="scheduleReport()">
+            <i class="fas fa-calendar-alt"></i>
+            Schedule Reports
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.min.js"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeExecutiveCharts();
+        
+        // Auto-refresh every 5 minutes
+        setInterval(function() {
+            location.reload();
+        }, 300000);
+    });
+
+    function initializeExecutiveCharts() {
+        // Performance Overview Chart
+        const performanceCtx = document.getElementById('performanceOverviewChart').getContext('2d');
+        new Chart(performanceCtx, {
+            type: 'line',
+            data: {
+                labels: ['00:00', '02:00', '04:00', '06:00', '08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00'],
+                datasets: [{
+                    label: 'Success Rate (%)',
+                    data: [98, 97, 96, 95, 97, 98, 94, 92, 96, 98, 97, 98],
+                    borderColor: 'rgb(30, 64, 175)',
+                    backgroundColor: 'rgba(30, 64, 175, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }, {
+                    label: 'Throughput (jobs/hour)',
+                    data: [45, 42, 38, 35, 52, 68, 85, 92, 88, 75, 62, 48],
+                    borderColor: 'rgb(5, 150, 105)',
+                    backgroundColor: 'rgba(5, 150, 105, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    yAxisID: 'y1'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    }
+                },
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        min: 90,
+                        max: 100,
+                        title: {
+                            display: true,
+                            text: 'Success Rate (%)'
+                        }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        title: {
+                            display: true,
+                            text: 'Throughput (jobs/hour)'
+                        },
+                        grid: {
+                            drawOnChartArea: false,
+                        },
+                    }
+                }
+            }
+        });
+
+        // Resource Utilization Chart
+        const resourceCtx = document.getElementById('resourceChart').getContext('2d');
+        new Chart(resourceCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['CPU', 'Memory', 'Storage', 'Network'],
+                datasets: [{
+                    data: [72, 68, 45, 32],
+                    backgroundColor: [
+                        'rgb(30, 64, 175)',
+                        'rgb(5, 150, 105)',
+                        'rgb(245, 158, 11)',
+                        'rgb(239, 68, 68)'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    }
+                }
+            }
+        });
+    }
+
+    function scheduleReport() {
+        alert('Report scheduling feature will be implemented. This would allow automatic generation and delivery of executive reports.');
+    }
+    </script>
+{% endblock %}
